@@ -378,9 +378,18 @@ export default function SeriesPage() {
                 <button
                   onClick={togglePlayPause}
                   disabled={!currentEpisode?.audioUrl}
-                  className="h-14 w-14 shrink-0 rounded-full border border-white/10 bg-[#7A1F2B] text-lg font-semibold shadow-lg disabled:opacity-50"
+                  className="h-14 w-14 shrink-0 flex items-center justify-center rounded-full border border-white/10 bg-[#7A1F2B] shadow-lg active:scale-95 transition"
                 >
-                  {isPlaying ? "❚❚" : "▶"}
+                  {isPlaying ? (
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="white">
+    <rect x="6" y="5" width="4" height="14" rx="1.5" />
+    <rect x="14" y="5" width="4" height="14" rx="1.5" />
+  </svg>
+) : (
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="white">
+    <path d="M8 5v14l11-7z" />
+  </svg>
+)}
                 </button>
               </div>
 
