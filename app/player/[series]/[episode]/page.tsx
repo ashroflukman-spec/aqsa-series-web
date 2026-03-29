@@ -37,6 +37,15 @@ type SeriesData = {
   isDeleted?: boolean;
 };
 
+type SpeakerItem = {
+  id: string;
+  name?: string;
+  fullName?: string;
+  displayName?: string;
+  slug?: string;
+  isDeleted?: boolean;
+};
+
 type MarkerItem = {
   id: string;
   time: number;
@@ -59,6 +68,7 @@ export default function PlayerPage() {
   const [episode, setEpisode] = useState<EpisodeData | null>(null);
   const [series, setSeries] = useState<SeriesData | null>(null);
   const [seriesEpisodes, setSeriesEpisodes] = useState<EpisodeData[]>([]);
+  const [speakerMap, setSpeakerMap] = useState<Record<string, string>>({});
   const [error, setError] = useState("");
 
   const [isPlaying, setIsPlaying] = useState(false);
@@ -99,7 +109,19 @@ export default function PlayerPage() {
 
         const currentEpisode: EpisodeData = {
           id: episodeSnap.id,
-          ...episodeData,
+          title: episodeData.title ?? "",
+          audioUrl: episodeData.audioUrl ?? "",
+          seriesId: episodeData.seriesId ?? "",
+          speakerId: episodeData.speakerId ?? "",
+          isDeleted: episodeData.isDeleted ?? false,
+          isPublished: episodeData.isPublished ?? true,
+          imageUrl: episodeData.imageUrl ?? "",
+          coverUrl: episodeData.coverUrl ?? "",
+          description: episodeData.description ?? "",
+          speakerName: episodeData.speakerName ?? "",
+          originalChapterLabel: episodeData.originalChapterLabel ?? "",
+          durationSeconds: episodeData.durationSeconds ?? 0,
+          displayOrder: episodeData.displayOrder ?? 0,
         };
 
         setEpisode(currentEpisode);
@@ -117,38 +139,71 @@ export default function PlayerPage() {
 
           setSeries({
             id: seriesSnap.id,
-            ...seriesData,
+            title: seriesData.title ?? "",
+            coverUrl: seriesData.coverUrl ?? "",
+            isDeleted: seriesData.isDeleted ?? false,
           });
         }
 
         const episodesSnap = await getDocs(collection(db, "episodes"));
+        const filteredEpisodes: EpisodeData[] = episodesSnap.docs
+          .map((docItem) => ({
+            id: docItem.id,
+            title: docItem.data().title ?? "",
+            audioUrl: docItem.data().audioUrl ?? "",
+            seriesId: docItem.data().seriesId ?? "",
+            speakerId: docItem.data().speakerId ?? "",
+            isDeleted: docItem.data().isDeleted ?? false,
+            isPublished: docItem.data().isPublished ?? true,
+            imageUrl: docItem.data().imageUrl ?? "",
+            coverUrl: docItem.data().coverUrl ?? "",
+            description: docItem.data().description ?? "",
+            speakerName: docItem.data().speakerName ?? "",
+            originalChapterLabel: docItem.data().originalChapterLabel ?? "",
+            durationSeconds: docItem.data().durationSeconds ?? 0,
+            displayOrder: docItem.data().displayOrder ?? 0,
+          }))
+          .filter(
+            (ep) =>
+              ep.seriesId === seriesId &&
+              ep.isDeleted !== true &&
+              ep.isPublished !== false
+          )
+          .sort((a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0));
 
-const filteredEpisodes: EpisodeData[] = episodesSnap.docs
-  .map((docItem) => ({
-    id: docItem.id,
-    title: docItem.data().title ?? "",
-    audioUrl: docItem.data().audioUrl ?? "",
-    seriesId: docItem.data().seriesId ?? "",
-    speakerId: docItem.data().speakerId ?? "",
-    isDeleted: docItem.data().isDeleted ?? false,
-    isPublished: docItem.data().isPublished ?? true,
-    imageUrl: docItem.data().imageUrl ?? "",
-    coverUrl: docItem.data().coverUrl ?? "",
-    description: docItem.data().description ?? "",
-    speakerName: docItem.data().speakerName ?? "",
-    originalChapterLabel: docItem.data().originalChapterLabel ?? "",
-    durationSeconds: docItem.data().durationSeconds ?? 0,
-    displayOrder: docItem.data().displayOrder ?? 0,
-  }))
-  .filter(
-    (ep) =>
-      ep.seriesId === seriesId &&
-      ep.isDeleted !== true &&
-      ep.isPublished !== false
-  )
-  .sort((a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0));
+        setSeriesEpisodes(filteredEpisodes);
 
-setSeriesEpisodes(filteredEpisodes);     } catch {
+        const speakersSnap = await getDocs(collection(db, "speakers"));
+        const speakersData: SpeakerItem[] = speakersSnap.docs
+          .map((docItem) => ({
+            id: docItem.id,
+            name: docItem.data().name ?? "",
+            fullName: docItem.data().fullName ?? "",
+            displayName: docItem.data().displayName ?? "",
+            slug: docItem.data().slug ?? "",
+            isDeleted: docItem.data().isDeleted ?? false,
+          }))
+          .filter((item) => item.isDeleted !== true);
+
+        const nextSpeakerMap: Record<string, string> = {};
+
+        for (const speaker of speakersData) {
+          const displayName =
+            speaker.displayName?.trim() ||
+            speaker.fullName?.trim() ||
+            speaker.name?.trim() ||
+            speaker.slug?.trim() ||
+            speaker.id;
+
+          nextSpeakerMap[speaker.id] = displayName;
+
+          if (speaker.slug?.trim()) {
+            nextSpeakerMap[speaker.slug.trim()] = displayName;
+          }
+        }
+
+        setSpeakerMap(nextSpeakerMap);
+      } catch {
         setError("Gagal memuatkan episod");
       }
     }
@@ -187,6 +242,14 @@ setSeriesEpisodes(filteredEpisodes);     } catch {
     const timer = setTimeout(() => setToast(""), 1600);
     return () => clearTimeout(timer);
   }, [toast]);
+
+  const currentEpisodeIndex = seriesEpisodes.findIndex((ep) => ep.id === episodeId);
+  const prevEpisode =
+    currentEpisodeIndex > 0 ? seriesEpisodes[currentEpisodeIndex - 1] : null;
+  const nextEpisode =
+    currentEpisodeIndex >= 0 && currentEpisodeIndex < seriesEpisodes.length - 1
+      ? seriesEpisodes[currentEpisodeIndex + 1]
+      : null;
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -231,21 +294,13 @@ setSeriesEpisodes(filteredEpisodes);     } catch {
       audio.removeEventListener("pause", onPause);
       audio.removeEventListener("play", onPlay);
     };
-  }, [episode?.audioUrl, episode?.durationSeconds, seriesEpisodes]);
+  }, [episode?.audioUrl, episode?.durationSeconds, nextEpisode]);
 
   useEffect(() => {
     setCurrentTime(0);
     setDuration(episode?.durationSeconds || 0);
     setIsPlaying(false);
   }, [episodeId]);
-
-  const currentEpisodeIndex = seriesEpisodes.findIndex((ep) => ep.id === episodeId);
-  const prevEpisode =
-    currentEpisodeIndex > 0 ? seriesEpisodes[currentEpisodeIndex - 1] : null;
-  const nextEpisode =
-    currentEpisodeIndex >= 0 && currentEpisodeIndex < seriesEpisodes.length - 1
-      ? seriesEpisodes[currentEpisodeIndex + 1]
-      : null;
 
   const updateContinueListening = (targetEpisode: EpisodeData) => {
     if (!series) return;
@@ -357,6 +412,13 @@ setSeriesEpisodes(filteredEpisodes);     } catch {
 
   const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
 
+  function getSpeakerName(speakerId?: string, fallbackName?: string) {
+    if (speakerId && speakerMap[speakerId]) return speakerMap[speakerId];
+    if (fallbackName && fallbackName.trim() !== "") return fallbackName;
+    if (speakerId) return speakerId;
+    return "Speaker tidak diketahui";
+  }
+
   const coverImage =
     series?.coverUrl ||
     episode?.coverUrl ||
@@ -453,7 +515,7 @@ setSeriesEpisodes(filteredEpisodes);     } catch {
             <div className="mb-4 flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <p className="text-sm font-medium tracking-wide text-white/85">
-                  {episode.speakerName || "Ustaz Ashrof Lukman"}
+                  {getSpeakerName(episode.speakerId, episode.speakerName)}
                 </p>
               </div>
 
@@ -580,18 +642,16 @@ setSeriesEpisodes(filteredEpisodes);     } catch {
           </div>
         </div>
 
-        {(episode.description || episode.speakerName) && (
+        {(episode.description || episode.speakerName || episode.speakerId) && (
           <div className="px-1 pb-2 pt-5">
             {episode.description && (
               <p className="text-[15px] leading-7 text-white/90">
                 {episode.description}
               </p>
             )}
-            {episode.speakerName && (
-              <p className="mt-4 text-sm text-white/70">
-                Speaker: {episode.speakerName}
-              </p>
-            )}
+            <p className="mt-4 text-sm text-white/70">
+              Speaker: {getSpeakerName(episode.speakerId, episode.speakerName)}
+            </p>
           </div>
         )}
 
