@@ -141,9 +141,13 @@ export default function SeriesPage() {
         setEpisodes(filteredEpisodes);
 
         if (filteredEpisodes.length > 0) {
-          setCurrentEpisode(filteredEpisodes[0]);
-          setPlayerDuration(filteredEpisodes[0].durationSeconds || 0);
-        }
+  const firstEpisode = filteredEpisodes[0];
+  setCurrentEpisode(firstEpisode);
+  setPlayerDuration(firstEpisode.durationSeconds || 0);
+
+  router.replace("/player/" + seriesId + "/" + firstEpisode.id);
+  return;
+}
 
         const speakersSnap = await getDocs(collection(db, "speakers"));
         const speakersData: SpeakerItem[] = speakersSnap.docs
