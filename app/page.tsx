@@ -109,7 +109,7 @@ export default function Page() {
 
         setSpeakerMap(nextSpeakerMap);
       } catch (err: any) {
-        setError(err?.message || "Gagal memuatkan data dari Firebase");
+        setError(err?.message || "Gagal memuatkan series dari Firebase");
       } finally {
         setLoading(false);
       }
@@ -120,7 +120,12 @@ export default function Page() {
     const saved = localStorage.getItem("recentlyPlayed");
     if (saved) {
       try {
-        setRecentlyPlayed(JSON.parse(saved));
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setRecentlyPlayed([parsed[0]]);
+        } else {
+          setRecentlyPlayed([]);
+        }
       } catch {
         setRecentlyPlayed([]);
       }
@@ -139,38 +144,38 @@ export default function Page() {
 
   if (showSplash || loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#0f1115]">
+      <div className="flex min-h-screen items-center justify-center bg-[#0f1115]">
         <Image
           src="/logo-icon.png"
           alt="Aqsa Series"
-          width={110}
-          height={110}
+          width={88}
+          height={88}
           priority
-          className="object-contain animate-pulse drop-shadow-[0_0_30px_rgba(255,180,0,0.4)]"
+          className="animate-pulse object-contain drop-shadow-[0_0_30px_rgba(255,180,0,0.4)]"
         />
       </div>
     );
   }
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-[#0f1115] to-[#1a1d24] text-white flex justify-center">
+    <main className="flex min-h-screen justify-center bg-gradient-to-b from-[#0f1115] to-[#1a1d24] text-white">
       <div className="w-full max-w-md px-6 py-10 pb-32">
         <div className="mb-8 flex items-center justify-between gap-4">
-          <div className="flex-1 min-w-0">
+          <div className="min-w-0 flex-1">
             <Image
               src="/logo-horizontal.png"
               alt="Aqsa Series"
               width={220}
               height={60}
               priority
-              className="h-25 w-auto object-contain drop-shadow-[0_0_20px_rgba(255,180,0,0.25)]"
+              className="h-10 w-auto object-contain drop-shadow-[0_0_20px_rgba(255,180,0,0.25)]"
             />
           </div>
 
           {user && (
             <button
               onClick={() => router.push("/admin")}
-              className="shrink-0 flex items-center gap-2 text-xs bg-[#1f232b] border border-white/10 px-3 py-2 rounded-xl hover:bg-[#2a2f39] transition"
+              className="shrink-0 flex items-center gap-2 rounded-xl border border-white/10 bg-[#1f232b] px-3 py-2 text-xs transition hover:bg-[#2a2f39]"
             >
               <Shield size={14} />
               Admin Dashboard
@@ -184,13 +189,13 @@ export default function Page() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Cari series..."
-            className="w-full rounded-2xl bg-[#1f232b] border border-white/10 px-4 py-3 text-sm text-white placeholder:text-gray-400 outline-none focus:border-[#7A1F2B]"
+            className="w-full rounded-2xl border border-white/10 bg-[#1f232b] px-4 py-3 text-sm text-white outline-none placeholder:text-gray-400 focus:border-[#7A1F2B]"
           />
         </div>
 
         {recentlyPlayed.length > 0 && normalized === "" && (
           <div className="mb-10">
-            <h2 className="text-sm text-gray-400 mb-4 uppercase tracking-wider">
+            <h2 className="mb-4 text-sm uppercase tracking-wider text-gray-400">
               Recently Played
             </h2>
 
@@ -201,10 +206,10 @@ export default function Page() {
                   onClick={() =>
                     router.push("/player/" + item.seriesId + "/" + item.episodeId)
                   }
-                  className="bg-[#1f232b] rounded-2xl p-4 cursor-pointer hover:bg-[#262b35] transition"
+                  className="cursor-pointer rounded-2xl bg-[#1f232b] p-4 transition hover:bg-[#262b35]"
                 >
                   <div className="text-sm font-semibold">{item.episodeTitle}</div>
-                  <div className="text-xs text-gray-400 mt-1">{item.seriesTitle}</div>
+                  <div className="mt-1 text-xs text-gray-400">{item.seriesTitle}</div>
                 </div>
               ))}
             </div>
@@ -212,7 +217,7 @@ export default function Page() {
         )}
 
         <div className="mb-4">
-          <h2 className="text-sm text-gray-400 uppercase tracking-wider">
+          <h2 className="text-sm uppercase tracking-wider text-gray-400">
             {normalized ? "Search Results" : "Popular Series"}
           </h2>
         </div>
@@ -235,14 +240,14 @@ export default function Page() {
               <div
                 key={item.id}
                 onClick={() => router.push("/series/" + item.id)}
-                className="rounded-2xl overflow-hidden bg-[#1f232b] cursor-pointer"
+                className="cursor-pointer overflow-hidden rounded-2xl bg-[#1f232b]"
               >
                 <div className="relative h-44">
                   {item.coverUrl && item.coverUrl.trim() !== "" ? (
                     <img
                       src={item.coverUrl}
                       alt={item.title}
-                      className="absolute inset-0 w-full h-full object-cover"
+                      className="absolute inset-0 h-full w-full object-cover"
                     />
                   ) : (
                     <div className="absolute inset-0 bg-gradient-to-br from-[#20252f] to-[#12151b]" />
