@@ -77,6 +77,17 @@ export default function Page() {
   const filteredSeries = series.filter((item) =>
     item.title.toLowerCase().includes(normalized)
   );
+  
+  if (loading) {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-[#0f1115]">
+      <img
+        src="/logo-icon.png"
+        className="w-16 animate-pulse"
+      />
+    </div>
+  );
+}
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-[#0f1115] to-[#1a1d24] text-white flex justify-center">
@@ -93,9 +104,13 @@ export default function Page() {
           </div>
         )}
 
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-center">Aqsa Series</h1>
-        </div>
+        <div className="mb-8 flex justify-center">
+  <img
+    src="/logo-horizontal.png"
+    alt="Aqsa Series"
+    className="h-27 object-contain"
+  />
+</div>
 
         <div className="mb-8">
           <input

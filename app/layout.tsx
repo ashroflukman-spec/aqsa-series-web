@@ -10,18 +10,17 @@ export const metadata: Metadata = {
   title: "Aqsa Series",
   description: "Platform audio Aqsa Series",
   manifest: "/manifest.webmanifest",
+
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
     title: "Aqsa Series",
   },
+
   icons: {
-    icon: [
-      { url: "/icon?size=192", sizes: "192x192", type: "image/png" },
-      { url: "/icon?size=512", sizes: "512x512", type: "image/png" },
-    ],
-    apple: [{ url: "/apple-icon", sizes: "180x180", type: "image/png" }],
-    shortcut: ["/icon?size=192"],
+    icon: "/icon.png",
+    apple: "/icon.png",
+    shortcut: "/icon.png",
   },
 };
 
@@ -36,7 +35,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="bg-[#0f1115] text-white">
+      <body className="bg-gradient-to-b from-[#0f1115] to-[#1a1d24]">
         <AuthProvider>
           <AudioProvider>
             <PWARegister />
