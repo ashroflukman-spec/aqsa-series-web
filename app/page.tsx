@@ -18,6 +18,15 @@ type SeriesItem = {
   isDeleted?: boolean;
 };
 
+type SpeakerItem = {
+  id: string;
+  name: string;
+  fullName?: string;
+  displayName?: string;
+  slug?: string;
+  isDeleted?: boolean;
+};
+
 type RecentItem = {
   seriesId: string;
   episodeId: string;
@@ -31,6 +40,7 @@ export default function Page() {
 
   const [search, setSearch] = useState("");
   const [series, setSeries] = useState<SeriesItem[]>([]);
+  const [speakerMap, setSpeakerMap] = useState<Record<string, string>>({});
   const [recentlyPlayed, setRecentlyPlayed] = useState<RecentItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [showSplash, setShowSplash] = useState(true);
@@ -45,12 +55,15 @@ export default function Page() {
   }, []);
 
   useEffect(() => {
-    async function fetchSeries() {
+    async function fetchData() {
       try {
-        const q = query(collection(db, "series"), orderBy("sortOrder", "asc"));
-        const snapshot = await getDocs(q);
+        const seriesQuery = query(
+          collection(db, "series"),
+          orderBy("sortOrder", "asc")
+        );
+        const seriesSnapshot = await getDocs(seriesQuery);
 
-        const data: SeriesItem[] = snapshot.docs
+        const seriesData: SeriesItem[] = seriesSnapshot.docs
           .map((docItem) => ({
             id: docItem.id,
             title: docItem.data().title ?? "",
@@ -62,15 +75,47 @@ export default function Page() {
           }))
           .filter((item) => item.isPublished === true && item.isDeleted !== true);
 
-        setSeries(data);
+        setSeries(seriesData);
+
+        const speakersSnapshot = await getDocs(collection(db, "speakers"));
+
+        const speakersData: SpeakerItem[] = speakersSnapshot.docs
+          .map((docItem) => ({
+            id: docItem.id,
+            name: docItem.data().name ?? "",
+            fullName: docItem.data().fullName ?? "",
+            displayName: docItem.data().displayName ?? "",
+            slug: docItem.data().slug ?? "",
+            isDeleted: docItem.data().isDeleted ?? false,
+          }))
+          .filter((item) => item.isDeleted !== true);
+
+        const nextSpeakerMap: Record<string, string> = {};
+
+        for (const speaker of speakersData) {
+          const displayName =
+            speaker.displayName?.trim() ||
+            speaker.fullName?.trim() ||
+            speaker.name?.trim() ||
+            speaker.slug?.trim() ||
+            speaker.id;
+
+          nextSpeakerMap[speaker.id] = displayName;
+
+          if (speaker.slug?.trim()) {
+            nextSpeakerMap[speaker.slug.trim()] = displayName;
+          }
+        }
+
+        setSpeakerMap(nextSpeakerMap);
       } catch (err: any) {
-        setError(err?.message || "Gagal memuatkan series dari Firebase");
+        setError(err?.message || "Gagal memuatkan data dari Firebase");
       } finally {
         setLoading(false);
       }
     }
 
-    fetchSeries();
+    fetchData();
 
     const saved = localStorage.getItem("recentlyPlayed");
     if (saved) {
@@ -88,14 +133,18 @@ export default function Page() {
     item.title.toLowerCase().includes(normalized)
   );
 
+  function getSpeakerName(speakerId: string) {
+    return speakerMap[speakerId] || speakerId || "Speaker tidak diketahui";
+  }
+
   if (showSplash || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#0f1115]">
         <Image
           src="/logo-icon.png"
           alt="Aqsa Series"
-          width={100}
-          height={100}
+          width={88}
+          height={88}
           priority
           className="object-contain animate-pulse drop-shadow-[0_0_30px_rgba(255,180,0,0.4)]"
         />
@@ -114,7 +163,7 @@ export default function Page() {
               width={220}
               height={60}
               priority
-              className="h-25 w-auto object-contain drop-shadow-[0_0_20px_rgba(255,180,0,0.25)]"
+              className="h-10 w-auto object-contain drop-shadow-[0_0_20px_rgba(255,180,0,0.25)]"
             />
           </div>
 
@@ -207,7 +256,7 @@ export default function Page() {
                     </div>
 
                     <div className="mt-1 text-sm text-gray-300">
-                      Speaker: {item.speakerId}
+                      Speaker: {getSpeakerName(item.speakerId)}
                     </div>
                   </div>
                 </div>
