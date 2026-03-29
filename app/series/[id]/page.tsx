@@ -291,26 +291,8 @@ export default function SeriesPage() {
   }
 
   function handleSelectEpisode(ep: EpisodeItem) {
-    const audio = audioRef.current;
-
-    setCurrentEpisode(ep);
-    setCurrentTime(0);
-    setPlayerDuration(ep.durationSeconds || 0);
-    setPlayerReady(false);
-
-    if (audio) {
-      audio.pause();
-      audio.currentTime = 0;
-    }
-
-    setTimeout(async () => {
-      if (audioRef.current && ep.audioUrl) {
-        try {
-          await audioRef.current.play();
-        } catch {}
-      }
-    }, 100);
-  }
+  router.push("/player/" + ep.seriesId + "/" + ep.id);
+}
 
   function handleSeek(e: React.ChangeEvent<HTMLInputElement>) {
     const value = Number(e.target.value);
