@@ -143,8 +143,8 @@ export default function Page() {
         <Image
           src="/logo-icon.png"
           alt="Aqsa Series"
-          width={88}
-          height={88}
+          width={110}
+          height={110}
           priority
           className="object-contain animate-pulse drop-shadow-[0_0_30px_rgba(255,180,0,0.4)]"
         />
@@ -163,7 +163,7 @@ export default function Page() {
               width={220}
               height={60}
               priority
-              className="h-10 w-auto object-contain drop-shadow-[0_0_20px_rgba(255,180,0,0.25)]"
+              className="h-25 w-auto object-contain drop-shadow-[0_0_20px_rgba(255,180,0,0.25)]"
             />
           </div>
 
