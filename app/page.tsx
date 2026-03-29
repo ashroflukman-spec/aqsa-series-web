@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { collection, getDocs, orderBy, query } from "firebase/firestore";
@@ -32,7 +33,16 @@ export default function Page() {
   const [series, setSeries] = useState<SeriesItem[]>([]);
   const [recentlyPlayed, setRecentlyPlayed] = useState<RecentItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showSplash, setShowSplash] = useState(true);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowSplash(false);
+    }, 900);
+
+    return () => clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     async function fetchSeries() {
@@ -77,40 +87,47 @@ export default function Page() {
   const filteredSeries = series.filter((item) =>
     item.title.toLowerCase().includes(normalized)
   );
-  
-  if (loading) {
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-[#0f1115]">
-      <img
-        src="/logo-icon.png"
-        className="w-16 animate-pulse"
-      />
-    </div>
-  );
-}
+
+  if (showSplash || loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#0f1115]">
+        <Image
+          src="/logo-icon.png"
+          alt="Aqsa Series"
+          width={88}
+          height={88}
+          priority
+          className="object-contain animate-pulse drop-shadow-[0_0_30px_rgba(255,180,0,0.4)]"
+        />
+      </div>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-[#0f1115] to-[#1a1d24] text-white flex justify-center">
       <div className="w-full max-w-md px-6 py-10 pb-32">
-        {user && (
-          <div className="mb-6 flex justify-end">
+        <div className="mb-8 flex items-center justify-between gap-4">
+          <div className="flex-1 min-w-0">
+            <Image
+              src="/logo-horizontal.png"
+              alt="Aqsa Series"
+              width={220}
+              height={60}
+              priority
+              className="h-10 w-auto object-contain drop-shadow-[0_0_20px_rgba(255,180,0,0.25)]"
+            />
+          </div>
+
+          {user && (
             <button
               onClick={() => router.push("/admin")}
-              className="flex items-center gap-2 text-xs bg-[#1f232b] border border-white/10 px-3 py-2 rounded-xl hover:bg-[#2a2f39]"
+              className="shrink-0 flex items-center gap-2 text-xs bg-[#1f232b] border border-white/10 px-3 py-2 rounded-xl hover:bg-[#2a2f39] transition"
             >
               <Shield size={14} />
               Admin Dashboard
             </button>
-          </div>
-        )}
-
-        <div className="mb-8 flex justify-center">
-  <img
-    src="/logo-horizontal.png"
-    alt="Aqsa Series"
-    className="h-27 object-contain"
-  />
-</div>
+          )}
+        </div>
 
         <div className="mb-8">
           <input
@@ -122,7 +139,7 @@ export default function Page() {
           />
         </div>
 
-        {!loading && recentlyPlayed.length > 0 && normalized === "" && (
+        {recentlyPlayed.length > 0 && normalized === "" && (
           <div className="mb-10">
             <h2 className="text-sm text-gray-400 mb-4 uppercase tracking-wider">
               Recently Played
@@ -151,25 +168,19 @@ export default function Page() {
           </h2>
         </div>
 
-        {loading && (
-          <div className="rounded-2xl bg-[#1f232b] p-5 text-sm text-gray-300">
-            Sedang memuatkan series...
-          </div>
-        )}
-
-        {!loading && error && (
+        {error && (
           <div className="rounded-2xl border border-red-500/30 bg-red-950/40 p-5 text-sm text-red-200">
             {error}
           </div>
         )}
 
-        {!loading && !error && filteredSeries.length === 0 && (
+        {!error && filteredSeries.length === 0 && (
           <div className="rounded-2xl bg-[#1f232b] p-5 text-sm text-gray-400">
             Tiada series dijumpai.
           </div>
         )}
 
-        {!loading && !error && filteredSeries.length > 0 && (
+        {!error && filteredSeries.length > 0 && (
           <div className="space-y-6">
             {filteredSeries.map((item) => (
               <div
