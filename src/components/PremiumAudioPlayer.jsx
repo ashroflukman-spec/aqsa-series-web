@@ -6,7 +6,14 @@ import {
   SkipBack,
   SkipForward,
   Trash2,
+  Pencil,
 } from "lucide-react";
+import {
+  addMarkerToStorage,
+  deleteMarkerFromStorage,
+  loadMarkers,
+  updateMarkerInStorage,
+} from "../../lib/markers";
 
 function formatTime(seconds = 0) {
   if (!Number.isFinite(seconds)) return "0:00";
@@ -35,22 +42,10 @@ function PremiumAudioPlayer({
   const [markers, setMarkers] = useState([]);
   const [toast, setToast] = useState("");
 
-  const storageKey = useMemo(() => `aqsa_markers_${audioId}`, [audioId]);
-
   useEffect(() => {
-    const saved = localStorage.getItem(storageKey);
-    if (!saved) return;
-    try {
-      const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed)) setMarkers(parsed);
-    } catch (err) {
-      console.error("Gagal baca marker:", err);
-    }
-  }, [storageKey]);
-
-  useEffect(() => {
-    localStorage.setItem(storageKey, JSON.stringify(markers));
-  }, [markers, storageKey]);
+    const savedMarkers = loadMarkers(audioId);
+    setMarkers(savedMarkers);
+  }, [audioId]);
 
   useEffect(() => {
     if (!toast) return;
@@ -142,16 +137,19 @@ function PremiumAudioPlayer({
       return;
     }
 
+    const note = window.prompt("Tulis nota marker (optional):", "") || "";
+
     const newMarker = {
       id:
         typeof crypto !== "undefined" && crypto.randomUUID
           ? crypto.randomUUID()
           : `${Date.now()}-${Math.random().toString(36).slice(2)}`,
       time,
-      label: `Marker ${markers.length + 1}`,
+      label: note.trim() ? note.trim() : `Marker ${markers.length + 1}`,
+      createdAt: Date.now(),
     };
 
-    const updated = [...markers, newMarker].sort((a, b) => a.time - b.time);
+    const updated = addMarkerToStorage(audioId, newMarker);
     setMarkers(updated);
     setToast(`Marker ditambah pada ${formatTime(time)}`);
     setIsMarkerFlash(true);
@@ -159,7 +157,24 @@ function PremiumAudioPlayer({
   };
 
   const deleteMarker = (id) => {
-    setMarkers((prev) => prev.filter((m) => m.id !== id));
+    const confirmed = window.confirm("Padam marker ini?");
+    if (!confirmed) return;
+
+    const updated = deleteMarkerFromStorage(audioId, id);
+    setMarkers(updated);
+    setToast("Marker berjaya dipadam");
+  };
+
+  const editMarker = (marker) => {
+    const newLabel = window.prompt("Edit nota marker:", marker.label || "");
+    if (newLabel === null) return;
+
+    const updated = updateMarkerInStorage(audioId, marker.id, {
+      label: newLabel.trim() || marker.label,
+    });
+
+    setMarkers(updated);
+    setToast("Marker berjaya dikemas kini");
   };
 
   const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
@@ -331,27 +346,38 @@ function PremiumAudioPlayer({
             {markers.map((marker) => (
               <div
                 key={marker.id}
-                className="flex items-center justify-between rounded-2xl border border-white/10 bg-black/10 px-4 py-3"
+                className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-black/10 px-4 py-3"
               >
                 <button
                   type="button"
                   onClick={() => jumpToMarker(marker.time)}
-                  className="text-left"
+                  className="min-w-0 flex-1 text-left"
                 >
-                  <div className="font-semibold">{marker.label}</div>
+                  <div className="truncate font-semibold">{marker.label}</div>
                   <div className="text-sm text-white/70">
                     {formatTime(marker.time)}
                   </div>
                 </button>
 
-                <button
-                  type="button"
-                  onClick={() => deleteMarker(marker.id)}
-                  className="rounded-xl border border-white/10 bg-white/5 p-2 text-white/80 transition hover:bg-white/10"
-                  aria-label="Padam marker"
-                >
-                  <Trash2 size={16} />
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => editMarker(marker)}
+                    className="rounded-xl border border-white/10 bg-white/5 p-2 text-white/80 transition hover:bg-white/10"
+                    aria-label="Edit marker"
+                  >
+                    <Pencil size={16} />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => deleteMarker(marker.id)}
+                    className="rounded-xl border border-white/10 bg-white/5 p-2 text-white/80 transition hover:bg-white/10"
+                    aria-label="Padam marker"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
               </div>
             ))}
           </div>
