@@ -328,7 +328,7 @@ function PremiumAudioPlayer({
 
       <div className="px-1 pb-2 pt-5">
         <p className="text-[15px] leading-7 text-white/90">{description}</p>
-        <p className="mt-4 text-sm text-white/70">Speaker: {speaker}</p>
+        <p className="mt-4 text-sm text-white/70">Penyampai · {speaker}</p>
       </div>
 
       <div className="mt-2 rounded-[24px] border border-white/10 bg-white/5 p-4">

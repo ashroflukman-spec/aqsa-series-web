@@ -5,11 +5,10 @@ import { usePathname, useRouter } from "next/navigation";
 function HomeIcon({ active }: { active: boolean }) {
   return (
     <svg
-      width="24"
-      height="24"
+      width="22"
+      height="22"
       viewBox="0 0 24 24"
       fill={active ? "currentColor" : "none"}
-      xmlns="http://www.w3.org/2000/svg"
       className={active ? "text-white" : "text-gray-300"}
     >
       <path
@@ -25,11 +24,10 @@ function HomeIcon({ active }: { active: boolean }) {
 function LibraryIcon({ active }: { active: boolean }) {
   return (
     <svg
-      width="24"
-      height="24"
+      width="22"
+      height="22"
       viewBox="0 0 24 24"
       fill={active ? "currentColor" : "none"}
-      xmlns="http://www.w3.org/2000/svg"
       className={active ? "text-white" : "text-gray-300"}
     >
       <path
@@ -49,11 +47,10 @@ function LibraryIcon({ active }: { active: boolean }) {
 function HeartIcon({ active }: { active: boolean }) {
   return (
     <svg
-      width="24"
-      height="24"
+      width="22"
+      height="22"
       viewBox="0 0 24 24"
       fill={active ? "currentColor" : "none"}
-      xmlns="http://www.w3.org/2000/svg"
       className={active ? "text-white" : "text-gray-300"}
     >
       <path
@@ -70,11 +67,10 @@ function HeartIcon({ active }: { active: boolean }) {
 function SettingsIcon({ active }: { active: boolean }) {
   return (
     <svg
-      width="24"
-      height="24"
+      width="22"
+      height="22"
       viewBox="0 0 24 24"
       fill="none"
-      xmlns="http://www.w3.org/2000/svg"
       className={active ? "text-white" : "text-gray-300"}
     >
       <path
@@ -93,13 +89,6 @@ function SettingsIcon({ active }: { active: boolean }) {
   );
 }
 
-type NavItem = {
-  label: string;
-  href: string;
-  match: (pathname: string) => boolean;
-  icon: (active: boolean) => React.ReactNode;
-};
-
 export default function BottomNav() {
   const router = useRouter();
   const pathname = usePathname();
@@ -117,66 +106,62 @@ export default function BottomNav() {
     return null;
   }
 
-  const items: NavItem[] = [
+  const items = [
     {
       label: "Home",
       href: "/",
-      match: (p) => p === "/",
-      icon: (active) => <HomeIcon active={active} />,
+      active: pathname === "/",
+      icon: HomeIcon,
     },
     {
       label: "Library",
       href: "/library",
-      match: (p) => p.startsWith("/library") || p.startsWith("/series"),
-      icon: (active) => <LibraryIcon active={active} />,
+      active:
+        pathname.startsWith("/library") || pathname.startsWith("/series"),
+      icon: LibraryIcon,
     },
     {
-      label: "Favorites",
+      label: "Saved",
       href: "/favorites",
-      match: (p) => p.startsWith("/favorites") || p.startsWith("/player"),
-      icon: (active) => <HeartIcon active={active} />,
+      active:
+        pathname.startsWith("/favorites") || pathname.startsWith("/player"),
+      icon: HeartIcon,
     },
     {
       label: "Settings",
       href: "/settings",
-      match: (p) => p.startsWith("/settings"),
-      icon: (active) => <SettingsIcon active={active} />,
+      active: pathname.startsWith("/settings"),
+      icon: SettingsIcon,
     },
   ];
 
   return (
-    <div className="fixed bottom-4 left-1/2 z-50 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 px-2">
-      <div className="relative overflow-hidden rounded-[30px] border border-white/10 bg-[#131722]/80 backdrop-blur-2xl shadow-[0_20px_60px_rgba(0,0,0,0.45)]">
+    <div className="fixed bottom-3 left-1/2 z-50 w-[calc(100%-1.2rem)] max-w-md -translate-x-1/2">
+      <div className="relative overflow-hidden rounded-b-[24px] border border-white/10 bg-[#131722]/82 backdrop-blur-2xl shadow-[0_16px_40px_rgba(0,0,0,0.38)]">
         <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute -top-8 left-6 h-16 w-16 rounded-full bg-white/8 blur-2xl" />
-          <div className="absolute top-0 right-0 h-16 w-24 bg-gradient-to-bl from-white/10 to-transparent blur-xl" />
-        </div>
+  <div className="absolute -top-6 left-8 h-14 w-14 rounded-full bg-white/6 blur-2xl" />
+  <div className="absolute inset-x-5 top-0 h-px bg-gradient-to-r from-transparent via-white/12 to-transparent" />
+  <div className="absolute left-1/2 top-0 h-[10px] w-24 -translate-x-1/2 rounded-b-full bg-white/[0.03] blur-md" />
+</div>
 
-        <div className="relative grid grid-cols-4 gap-2 p-2">
+        <div className="relative grid grid-cols-4 gap-1 p-1.5 pt-2">
           {items.map((item) => {
-            const active = item.match(pathname);
+            const Icon = item.icon;
 
             return (
               <button
                 key={item.label}
                 onClick={() => router.push(item.href)}
-                className={`relative flex flex-col items-center justify-center rounded-[22px] px-2 py-3 transition duration-200 ${
-                  active
-                    ? "bg-gradient-to-b from-[#a01f34] to-[#7A1F2B] text-white shadow-[0_10px_24px_rgba(122,31,43,0.45)]"
-                    : "text-gray-300 hover:bg-white/[0.04]"
+                className={`flex flex-col items-center justify-center rounded-[18px] px-1 py-2 transition ${
+                  item.active
+                    ? "bg-gradient-to-b from-[#a01f34] to-[#7A1F2B] text-white shadow-[0_8px_20px_rgba(122,31,43,0.40)]"
+                    : "text-gray-300"
                 }`}
               >
-                {active && (
-                  <div className="absolute inset-0 rounded-[22px] ring-1 ring-white/10" />
-                )}
-
-                <div className="relative flex h-7 items-center justify-center">
-                  {item.icon(active)}
-                </div>
-
+                <Icon active={item.active} />
                 <span
-                  className={`relative mt-1 text-[12px] font-medium ${
-                    active ? "text-white" : "text-gray-300"
+                  className={`mt-1 text-[10px] font-medium ${
+                    item.active ? "text-white" : "text-gray-300"
                   }`}
                 >
                   {item.label}

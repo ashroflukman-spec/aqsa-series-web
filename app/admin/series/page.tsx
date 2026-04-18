@@ -29,8 +29,10 @@ type SeriesItem = {
   isPublished: boolean;
   originalWorkTitle?: string;
   originalWorkAuthor?: string;
+  originalWorkTranslator?: string;
   originalWorkPublisher?: string;
   originalLanguage?: string;
+  originalWorkCoverUrl?: string;
   isDeleted?: boolean;
 };
 
@@ -52,6 +54,7 @@ export default function AdminSeriesPage() {
 
   const [originalTitle, setOriginalTitle] = useState("");
   const [originalAuthor, setOriginalAuthor] = useState("");
+  const [originalTranslator, setOriginalTranslator] = useState("");
   const [originalPublisher, setOriginalPublisher] = useState("");
   const [originalLanguage, setOriginalLanguage] = useState("");
 
@@ -59,6 +62,11 @@ export default function AdminSeriesPage() {
   const [coverPreview, setCoverPreview] = useState("");
   const [coverFileName, setCoverFileName] = useState("");
   const [existingCoverUrl, setExistingCoverUrl] = useState("");
+
+  const [originalWorkCoverFile, setOriginalWorkCoverFile] = useState<File | null>(null);
+  const [originalWorkCoverPreview, setOriginalWorkCoverPreview] = useState("");
+  const [originalWorkCoverFileName, setOriginalWorkCoverFileName] = useState("");
+  const [existingOriginalWorkCoverUrl, setExistingOriginalWorkCoverUrl] = useState("");
 
   const [editingSeriesId, setEditingSeriesId] = useState("");
   const [movingToTrashId, setMovingToTrashId] = useState("");
@@ -86,14 +94,23 @@ export default function AdminSeriesPage() {
     setDescription("");
     setSortOrder("1");
     setIsPublished(true);
+
     setOriginalTitle("");
     setOriginalAuthor("");
+    setOriginalTranslator("");
     setOriginalPublisher("");
     setOriginalLanguage("");
+
     setCoverFile(null);
     setCoverPreview("");
     setCoverFileName("");
     setExistingCoverUrl("");
+
+    setOriginalWorkCoverFile(null);
+    setOriginalWorkCoverPreview("");
+    setOriginalWorkCoverFileName("");
+    setExistingOriginalWorkCoverUrl("");
+
     setMessage("");
     setError("");
   }
@@ -108,8 +125,15 @@ export default function AdminSeriesPage() {
       if (coverPreview && coverPreview.startsWith("blob:")) {
         URL.revokeObjectURL(coverPreview);
       }
+
+      if (
+        originalWorkCoverPreview &&
+        originalWorkCoverPreview.startsWith("blob:")
+      ) {
+        URL.revokeObjectURL(originalWorkCoverPreview);
+      }
     };
-  }, [coverPreview]);
+  }, [coverPreview, originalWorkCoverPreview]);
 
   async function loadData() {
     try {
@@ -146,8 +170,10 @@ export default function AdminSeriesPage() {
           isPublished: docItem.data().isPublished ?? false,
           originalWorkTitle: docItem.data().originalWorkTitle ?? "",
           originalWorkAuthor: docItem.data().originalWorkAuthor ?? "",
+          originalWorkTranslator: docItem.data().originalWorkTranslator ?? "",
           originalWorkPublisher: docItem.data().originalWorkPublisher ?? "",
           originalLanguage: docItem.data().originalLanguage ?? "",
+          originalWorkCoverUrl: docItem.data().originalWorkCoverUrl ?? "",
           isDeleted: docItem.data().isDeleted ?? false,
         }))
         .filter((item) => item.isDeleted !== true);
@@ -199,19 +225,50 @@ export default function AdminSeriesPage() {
     setCoverPreview(previewUrl);
   }
 
+  function handleOriginalWorkCoverChange(
+    e: React.ChangeEvent<HTMLInputElement>
+  ) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const allowed = ["image/jpeg", "image/png", "image/webp"];
+    if (!allowed.includes(file.type)) {
+      setError("Sila upload gambar dalam format JPG, PNG atau WEBP.");
+      return;
+    }
+
+    setOriginalWorkCoverFile(file);
+    setOriginalWorkCoverFileName(file.name);
+
+    if (
+      originalWorkCoverPreview &&
+      originalWorkCoverPreview.startsWith("blob:")
+    ) {
+      URL.revokeObjectURL(originalWorkCoverPreview);
+    }
+
+    const previewUrl = URL.createObjectURL(file);
+    setOriginalWorkCoverPreview(previewUrl);
+  }
+
   async function uploadCover(seriesId: string) {
     if (!coverFile) return existingCoverUrl || "";
 
-    setUploading(true);
-    try {
-      const ext = coverFile.name.split(".").pop() || "jpg";
-      const storageRef = ref(storage, `series/${seriesId}.${ext}`);
+    const ext = coverFile.name.split(".").pop() || "jpg";
+    const storageRef = ref(storage, `series/${seriesId}.${ext}`);
 
-      await uploadBytes(storageRef, coverFile);
-      return await getDownloadURL(storageRef);
-    } finally {
-      setUploading(false);
-    }
+    await uploadBytes(storageRef, coverFile);
+    return await getDownloadURL(storageRef);
+  }
+
+  async function uploadOriginalWorkCover(seriesId: string) {
+    if (!originalWorkCoverFile) return existingOriginalWorkCoverUrl || "";
+
+    const ext = originalWorkCoverFile.name.split(".").pop() || "jpg";
+    const storageRef = ref(storage, `series-original-work/${seriesId}.${ext}`);
+
+    await uploadBytes(storageRef, originalWorkCoverFile);
+    return await getDownloadURL(storageRef);
   }
 
   function handleEdit(item: SeriesItem) {
@@ -222,14 +279,23 @@ export default function AdminSeriesPage() {
     setDescription(item.description);
     setSortOrder(String(item.sortOrder || 1));
     setIsPublished(item.isPublished);
+
     setOriginalTitle(item.originalWorkTitle || "");
     setOriginalAuthor(item.originalWorkAuthor || "");
+    setOriginalTranslator(item.originalWorkTranslator || "");
     setOriginalPublisher(item.originalWorkPublisher || "");
     setOriginalLanguage(item.originalLanguage || "");
+
     setExistingCoverUrl(item.coverUrl || "");
     setCoverPreview(item.coverUrl || "");
     setCoverFile(null);
     setCoverFileName("");
+
+    setExistingOriginalWorkCoverUrl(item.originalWorkCoverUrl || "");
+    setOriginalWorkCoverPreview(item.originalWorkCoverUrl || "");
+    setOriginalWorkCoverFile(null);
+    setOriginalWorkCoverFileName("");
+
     setMessage("");
     setError("");
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -288,8 +354,12 @@ export default function AdminSeriesPage() {
 
     try {
       setSaving(true);
+      setUploading(true);
 
-      const coverUrl = await uploadCover(finalSlug);
+      const [coverUrl, originalWorkCoverUrl] = await Promise.all([
+        uploadCover(finalSlug),
+        uploadOriginalWorkCover(finalSlug),
+      ]);
 
       await setDoc(
         doc(db, "series", finalSlug),
@@ -303,8 +373,10 @@ export default function AdminSeriesPage() {
           isPublished,
           originalWorkTitle: originalTitle.trim(),
           originalWorkAuthor: originalAuthor.trim(),
+          originalWorkTranslator: originalTranslator.trim(),
           originalWorkPublisher: originalPublisher.trim(),
           originalLanguage: originalLanguage.trim(),
+          originalWorkCoverUrl: originalWorkCoverUrl || "",
           isDeleted: false,
           deletedAt: null,
           createdAt: serverTimestamp(),
@@ -325,6 +397,7 @@ export default function AdminSeriesPage() {
       setError(err?.message || "Gagal menyimpan series.");
     } finally {
       setSaving(false);
+      setUploading(false);
     }
   }
 
@@ -346,13 +419,13 @@ export default function AdminSeriesPage() {
           ← Kembali
         </button>
 
-        <h1 className="text-2xl font-bold mb-8">
+        <h1 className="mb-8 text-2xl font-bold">
           {editingSeriesId ? "Edit Series" : "Manage Series"}
         </h1>
 
         <form
           onSubmit={handleSubmit}
-          className="rounded-3xl border border-white/10 bg-white/5 backdrop-blur-xl p-5 space-y-4"
+          className="space-y-4 rounded-3xl border border-white/10 bg-white/5 p-5 backdrop-blur-xl"
         >
           <input
             value={title}
@@ -395,13 +468,13 @@ export default function AdminSeriesPage() {
           />
 
           <div className="rounded-xl bg-[#14161b] px-4 py-3">
-            <label className="block text-sm text-gray-300 mb-2">
-              Upload Cover
+            <label className="mb-2 block text-sm text-gray-300">
+              Upload Cover Series
             </label>
 
             <label
               htmlFor="series-cover-upload"
-              className="block w-full rounded-xl border border-dashed border-white/20 px-4 py-3 text-sm text-gray-300 cursor-pointer hover:border-[#7A1F2B] transition"
+              className="block w-full cursor-pointer rounded-xl border border-dashed border-white/20 px-4 py-3 text-sm text-gray-300 transition hover:border-[#7A1F2B]"
             >
               {coverFileName
                 ? `Fail dipilih: ${coverFileName}`
@@ -422,7 +495,7 @@ export default function AdminSeriesPage() {
               <img
                 src={coverPreview || existingCoverUrl}
                 alt="Preview Cover"
-                className="w-full h-40 object-cover rounded-xl mt-3"
+                className="mt-3 h-40 w-full rounded-xl object-cover"
               />
             )}
           </div>
@@ -442,6 +515,13 @@ export default function AdminSeriesPage() {
           />
 
           <input
+            value={originalTranslator}
+            onChange={(e) => setOriginalTranslator(e.target.value)}
+            placeholder="Penterjemah"
+            className="w-full rounded-xl bg-[#14161b] px-4 py-3"
+          />
+
+          <input
             value={originalPublisher}
             onChange={(e) => setOriginalPublisher(e.target.value)}
             placeholder="Penerbit"
@@ -455,7 +535,40 @@ export default function AdminSeriesPage() {
             className="w-full rounded-xl bg-[#14161b] px-4 py-3"
           />
 
-          <div className="rounded-2xl bg-[#14161b] border border-white/10 px-4 py-3 flex items-center justify-between">
+          <div className="rounded-xl bg-[#14161b] px-4 py-3">
+            <label className="mb-2 block text-sm text-gray-300">
+              Upload Cover Karya Asal
+            </label>
+
+            <label
+              htmlFor="original-work-cover-upload"
+              className="block w-full cursor-pointer rounded-xl border border-dashed border-white/20 px-4 py-3 text-sm text-gray-300 transition hover:border-[#7A1F2B]"
+            >
+              {originalWorkCoverFileName
+                ? `Fail dipilih: ${originalWorkCoverFileName}`
+                : existingOriginalWorkCoverUrl && !originalWorkCoverFile
+                ? "Cover karya asal sedia ada disimpan. Tekan untuk ganti."
+                : "Tekan untuk pilih gambar karya asal"}
+            </label>
+
+            <input
+              id="original-work-cover-upload"
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={handleOriginalWorkCoverChange}
+              className="hidden"
+            />
+
+            {(originalWorkCoverPreview || existingOriginalWorkCoverUrl) && (
+              <img
+                src={originalWorkCoverPreview || existingOriginalWorkCoverUrl}
+                alt="Preview Cover Karya Asal"
+                className="mt-3 h-40 w-full rounded-xl object-cover"
+              />
+            )}
+          </div>
+
+          <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-[#14161b] px-4 py-3">
             <div>
               <p className="text-sm font-medium">Status Publish</p>
             </div>
@@ -463,7 +576,7 @@ export default function AdminSeriesPage() {
             <button
               type="button"
               onClick={() => setIsPublished(!isPublished)}
-              className={`w-14 h-8 rounded-full relative transition ${
+              className={`relative h-8 w-14 rounded-full transition ${
                 isPublished ? "bg-[#7A1F2B]" : "bg-gray-600"
               }`}
             >
@@ -475,11 +588,11 @@ export default function AdminSeriesPage() {
             </button>
           </div>
 
-          {message && <p className="text-green-400 text-sm">{message}</p>}
-          {error && <p className="text-red-400 text-sm">{error}</p>}
+          {message && <p className="text-sm text-green-400">{message}</p>}
+          {error && <p className="text-sm text-red-400">{error}</p>}
 
           <div className="grid grid-cols-2 gap-3">
-            <button className="w-full bg-[#7A1F2B] rounded-xl py-3">
+            <button className="w-full rounded-xl bg-[#7A1F2B] py-3">
               {saving || uploading
                 ? "Saving..."
                 : editingSeriesId
@@ -490,7 +603,7 @@ export default function AdminSeriesPage() {
             <button
               type="button"
               onClick={resetForm}
-              className="w-full bg-[#1f232b] border border-white/10 rounded-xl py-3"
+              className="w-full rounded-xl border border-white/10 bg-[#1f232b] py-3"
             >
               Reset
             </button>
@@ -498,74 +611,81 @@ export default function AdminSeriesPage() {
         </form>
 
         <div className="mt-10 space-y-3">
-          {seriesList.map((item) => (
-            <div
-              key={item.id}
-              className="bg-[#1f232b] rounded-2xl p-4 border border-white/5"
-            >
-              <div className="flex gap-4">
-                {item.coverUrl ? (
-                  <img
-                    src={item.coverUrl}
-                    alt={item.title}
-                    className="w-20 h-20 rounded-xl object-cover shrink-0 border border-white/10"
-                  />
-                ) : (
-                  <div className="w-20 h-20 rounded-xl shrink-0 bg-[#14161b] border border-white/10 flex items-center justify-center text-[10px] text-gray-500 text-center px-2">
-                    No Cover
-                  </div>
-                )}
+          {loading && (
+            <div className="rounded-2xl border border-white/5 bg-[#1f232b] p-4 text-sm text-gray-400">
+              Memuatkan series...
+            </div>
+          )}
 
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="font-semibold leading-5">{item.title}</p>
-                      <p className="text-xs text-gray-500 mt-1">
-                        {speakerNameMap[item.speakerId] || item.speakerId}
-                      </p>
+          {!loading &&
+            seriesList.map((item) => (
+              <div
+                key={item.id}
+                className="rounded-2xl border border-white/5 bg-[#1f232b] p-4"
+              >
+                <div className="flex gap-4">
+                  {item.coverUrl ? (
+                    <img
+                      src={item.coverUrl}
+                      alt={item.title}
+                      className="h-20 w-20 shrink-0 rounded-xl border border-white/10 object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-[#14161b] px-2 text-center text-[10px] text-gray-500">
+                      No Cover
+                    </div>
+                  )}
+
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="font-semibold leading-5">{item.title}</p>
+                        <p className="mt-1 text-xs text-gray-500">
+                          {speakerNameMap[item.speakerId] || item.speakerId}
+                        </p>
+                      </div>
+
+                      <div
+                        className={`whitespace-nowrap rounded-full px-2 py-1 text-[11px] ${
+                          item.isPublished
+                            ? "bg-emerald-500/15 text-emerald-300"
+                            : "bg-gray-500/15 text-gray-300"
+                        }`}
+                      >
+                        {item.isPublished ? "Publish" : "Draft"}
+                      </div>
                     </div>
 
-                    <div
-                      className={`text-[11px] px-2 py-1 rounded-full whitespace-nowrap ${
-                        item.isPublished
-                          ? "bg-emerald-500/15 text-emerald-300"
-                          : "bg-gray-500/15 text-gray-300"
-                      }`}
-                    >
-                      {item.isPublished ? "Publish" : "Draft"}
+                    <p className="mt-2 line-clamp-2 text-xs text-gray-400">
+                      {item.description || "Tiada description"}
+                    </p>
+
+                    <div className="mt-3 flex items-center gap-3 text-[11px] text-gray-500">
+                      <span>{episodeCountMap[item.id] || 0} episode</span>
+                      <span>•</span>
+                      <span>Sort: {item.sortOrder || 1}</span>
                     </div>
-                  </div>
-
-                  <p className="text-xs text-gray-400 mt-2 line-clamp-2">
-                    {item.description || "Tiada description"}
-                  </p>
-
-                  <div className="mt-3 flex items-center gap-3 text-[11px] text-gray-500">
-                    <span>{episodeCountMap[item.id] || 0} episode</span>
-                    <span>•</span>
-                    <span>Sort: {item.sortOrder || 1}</span>
                   </div>
                 </div>
-              </div>
 
-              <div className="mt-4 grid grid-cols-2 gap-3">
-                <button
-                  onClick={() => handleEdit(item)}
-                  className="rounded-2xl bg-[#14161b] border border-white/10 px-4 py-3 text-sm font-semibold"
-                >
-                  Edit
-                </button>
+                <div className="mt-4 grid grid-cols-2 gap-3">
+                  <button
+                    onClick={() => handleEdit(item)}
+                    className="rounded-2xl border border-white/10 bg-[#14161b] px-4 py-3 text-sm font-semibold"
+                  >
+                    Edit
+                  </button>
 
-                <button
-                  onClick={() => handleMoveToTrash(item)}
-                  disabled={movingToTrashId === item.id}
-                  className="rounded-2xl bg-red-950/40 border border-red-500/20 px-4 py-3 text-sm font-semibold text-red-200"
-                >
-                  {movingToTrashId === item.id ? "Moving..." : "Delete"}
-                </button>
+                  <button
+                    onClick={() => handleMoveToTrash(item)}
+                    disabled={movingToTrashId === item.id}
+                    className="rounded-2xl border border-red-500/20 bg-red-950/40 px-4 py-3 text-sm font-semibold text-red-200"
+                  >
+                    {movingToTrashId === item.id ? "Moving..." : "Delete"}
+                  </button>
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
         </div>
       </div>
     </main>

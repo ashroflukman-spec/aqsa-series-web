@@ -208,7 +208,7 @@ export default function LibraryPage() {
                         </div>
 
                         <div className="mt-1 text-sm text-gray-300">
-                          Speaker: {getSpeakerName(item.speakerId)}
+                          Penyampai · {getSpeakerName(item.speakerId)}
                         </div>
                       </div>
                     </div>
