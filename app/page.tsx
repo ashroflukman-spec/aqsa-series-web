@@ -208,15 +208,17 @@ export default function Page() {
 
   const normalized = search.trim().toLowerCase();
 
-  const filteredSeries = series.filter((item) => {
-    const speakerName = speakerMap[item.speakerId] || "";
-    return (
-      item.title.toLowerCase().includes(normalized) ||
-      speakerName.toLowerCase().includes(normalized)
-    );
-  });
+  const filteredSeries = useMemo(() => {
+    return series.filter((item) => {
+      const speakerName = speakerMap[item.speakerId] || "";
+      return (
+        item.title.toLowerCase().includes(normalized) ||
+        speakerName.toLowerCase().includes(normalized)
+      );
+    });
+  }, [series, speakerMap, normalized]);
 
-  const highlightVideos = useMemo(() => videos.slice(0, 2), [videos]);
+  const highlightVideos = useMemo(() => videos.slice(0, 5), [videos]);
 
   function getSpeakerName(speakerId: string) {
     return speakerMap[speakerId] || speakerId || "Speaker tidak diketahui";
@@ -349,7 +351,7 @@ export default function Page() {
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Cari series atau penyampai..."
+                placeholder="Cari series..."
                 className="w-full rounded-full border border-white/10 bg-[#16191f] px-5 py-3.5 text-sm text-white shadow-inner outline-none placeholder:text-gray-500 focus:border-[#7A1F2B] focus:ring-2 focus:ring-[#7A1F2B]/20"
               />
             </div>
@@ -434,61 +436,46 @@ export default function Page() {
               </button>
             </div>
 
-            <div className="space-y-4">
-              {highlightVideos.map((video) => (
-                <div
-                  key={video.id}
-                  onClick={() => router.push("/videos")}
-                  className="group cursor-pointer overflow-hidden rounded-[26px] border border-white/10 bg-white/[0.04] shadow-[0_14px_40px_rgba(0,0,0,0.22)] backdrop-blur-xl transition duration-300 hover:-translate-y-1 hover:border-white/15 hover:bg-white/[0.06] hover:shadow-[0_20px_54px_rgba(0,0,0,0.3)]"
-                >
-                  <div className="flex gap-4 p-4">
-                    <div className="relative h-24 w-36 shrink-0 overflow-hidden rounded-2xl bg-[#16191f]">
+            <div className="-mx-6 overflow-x-auto px-6 pb-2">
+              <div className="flex gap-4">
+                {highlightVideos.map((video) => (
+                  <div
+                    key={video.id}
+                    onClick={() => router.push("/videos")}
+                    className="group w-[86%] shrink-0 cursor-pointer overflow-hidden rounded-[26px] border border-white/10 bg-white/[0.04] shadow-[0_14px_40px_rgba(0,0,0,0.22)] backdrop-blur-xl transition duration-300 hover:-translate-y-1 hover:border-white/15 hover:bg-white/[0.06] hover:shadow-[0_20px_54px_rgba(0,0,0,0.3)]"
+                  >
+                    <div className="relative h-48">
                       {video.thumbnailUrl ? (
                         <img
                           src={video.thumbnailUrl}
                           alt={video.title}
-                          className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
+                          className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
                         />
                       ) : (
-                        <div className="flex h-full w-full items-center justify-center text-xs text-gray-500">
-                          Tiada Thumbnail
-                        </div>
+                        <div className="absolute inset-0 bg-gradient-to-br from-[#20252f] to-[#12151b]" />
                       )}
 
-                      <div className="absolute inset-0 bg-black/20" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-black/10 to-transparent" />
 
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-black/55 backdrop-blur">
-                          <svg
-                            width="16"
-                            height="16"
-                            viewBox="0 0 24 24"
-                            fill="white"
-                          >
-                            <path d="M8 5v14l11-7z" />
-                          </svg>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
+                      <div className="absolute left-4 top-4">
                         <span className="rounded-full border border-[#D4AF37]/30 bg-[#D4AF37]/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#E8D28A]">
                           {video.category}
                         </span>
                       </div>
+                    </div>
 
-                      <div className="mt-3 line-clamp-2 text-[16px] font-semibold leading-[1.35] text-white">
+                    <div className="p-4">
+                      <div className="line-clamp-2 text-[18px] font-semibold leading-[1.35] text-white">
                         {video.title}
                       </div>
 
-                      <div className="mt-1 text-sm text-white/45">
+                      <div className="mt-1.5 text-sm text-white/45">
                         {video.speaker || "Tidak dinyatakan"}
                       </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           </div>
         )}
@@ -496,7 +483,7 @@ export default function Page() {
         <div className="mb-5 flex items-center justify-between">
           <div>
             <h2 className="text-[13px] font-semibold uppercase tracking-[0.22em] text-white/55">
-              {normalized ? "Hasil Carian" : "Siri Popular"}
+              {normalized ? "Hasil Carian" : "Siri Audio Popular"}
             </h2>
             <div className="mt-2 h-[2px] w-14 rounded-full bg-[#7A1F2B]" />
           </div>
