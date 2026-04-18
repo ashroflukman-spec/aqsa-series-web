@@ -79,6 +79,12 @@ export default function AdminPage() {
       href: "/admin/episodes",
     },
     {
+      title: "Manage Videos",
+      desc: "Tambah, edit dan urus video YouTube untuk Video Library.",
+      icon: ListMusic,
+      href: "/admin/videos",
+    },
+    {
       title: "Trash",
       desc: "Pulihkan semula data yang telah dipadam ke Recycle Bin.",
       icon: Trash2,
