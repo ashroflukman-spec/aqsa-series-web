@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 
 type MiniPlayerState = {
   seriesId: string;
@@ -13,6 +13,7 @@ type MiniPlayerState = {
 
 export default function MiniPlayer() {
   const router = useRouter();
+  const pathname = usePathname();
 
   const [mounted, setMounted] = useState(false);
   const [showMiniPlayer, setShowMiniPlayer] = useState(true);
@@ -59,7 +60,22 @@ export default function MiniPlayer() {
     };
   }, []);
 
-  if (!mounted || !showMiniPlayer || !currentItem) {
+  const hiddenOnRoutes = [
+    "/admin",
+    "/admin/login",
+    "/admin/speakers",
+    "/admin/series",
+    "/admin/episodes",
+    "/admin/trash",
+    "/admin/videos",
+  ];
+
+  if (
+    !mounted ||
+    !showMiniPlayer ||
+    !currentItem ||
+    hiddenOnRoutes.some((route) => pathname.startsWith(route))
+  ) {
     return null;
   }
 
