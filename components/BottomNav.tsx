@@ -5,8 +5,8 @@ import { usePathname, useRouter } from "next/navigation";
 function HomeIcon({ active }: { active: boolean }) {
   return (
     <svg
-      width="22"
-      height="22"
+      width="20"
+      height="20"
       viewBox="0 0 24 24"
       fill={active ? "currentColor" : "none"}
       className={active ? "text-white" : "text-gray-300"}
@@ -24,8 +24,8 @@ function HomeIcon({ active }: { active: boolean }) {
 function LibraryIcon({ active }: { active: boolean }) {
   return (
     <svg
-      width="22"
-      height="22"
+      width="20"
+      height="20"
       viewBox="0 0 24 24"
       fill={active ? "currentColor" : "none"}
       className={active ? "text-white" : "text-gray-300"}
@@ -44,11 +44,40 @@ function LibraryIcon({ active }: { active: boolean }) {
   );
 }
 
+function VideoIcon({ active }: { active: boolean }) {
+  return (
+    <svg
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="none"
+      className={active ? "text-white" : "text-gray-300"}
+    >
+      <rect
+        x="3.5"
+        y="5"
+        width="17"
+        height="14"
+        rx="3"
+        stroke="currentColor"
+        strokeWidth="1.8"
+      />
+      <path
+        d="M10 9V15L15 12L10 9Z"
+        fill={active ? "currentColor" : "none"}
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 function HeartIcon({ active }: { active: boolean }) {
   return (
     <svg
-      width="22"
-      height="22"
+      width="20"
+      height="20"
       viewBox="0 0 24 24"
       fill={active ? "currentColor" : "none"}
       className={active ? "text-white" : "text-gray-300"}
@@ -67,8 +96,8 @@ function HeartIcon({ active }: { active: boolean }) {
 function SettingsIcon({ active }: { active: boolean }) {
   return (
     <svg
-      width="22"
-      height="22"
+      width="20"
+      height="20"
       viewBox="0 0 24 24"
       fill="none"
       className={active ? "text-white" : "text-gray-300"}
@@ -121,6 +150,12 @@ export default function BottomNav() {
       icon: LibraryIcon,
     },
     {
+      label: "Videos",
+      href: "/videos",
+      active: pathname.startsWith("/videos"),
+      icon: VideoIcon,
+    },
+    {
       label: "Saved",
       href: "/favorites",
       active:
@@ -139,12 +174,12 @@ export default function BottomNav() {
     <div className="fixed bottom-3 left-1/2 z-50 w-[calc(100%-1.2rem)] max-w-md -translate-x-1/2">
       <div className="relative overflow-hidden rounded-b-[24px] border border-white/10 bg-[#131722]/82 backdrop-blur-2xl shadow-[0_16px_40px_rgba(0,0,0,0.38)]">
         <div className="absolute inset-0 pointer-events-none">
-  <div className="absolute -top-6 left-8 h-14 w-14 rounded-full bg-white/6 blur-2xl" />
-  <div className="absolute inset-x-5 top-0 h-px bg-gradient-to-r from-transparent via-white/12 to-transparent" />
-  <div className="absolute left-1/2 top-0 h-[10px] w-24 -translate-x-1/2 rounded-b-full bg-white/[0.03] blur-md" />
-</div>
+          <div className="absolute -top-6 left-8 h-14 w-14 rounded-full bg-white/6 blur-2xl" />
+          <div className="absolute inset-x-5 top-0 h-px bg-gradient-to-r from-transparent via-white/12 to-transparent" />
+          <div className="absolute left-1/2 top-0 h-[10px] w-24 -translate-x-1/2 rounded-b-full bg-white/[0.03] blur-md" />
+        </div>
 
-        <div className="relative grid grid-cols-4 gap-1 p-1.5 pt-2">
+        <div className="relative grid grid-cols-5 gap-1 p-1.5 pt-2">
           {items.map((item) => {
             const Icon = item.icon;
 
@@ -160,7 +195,7 @@ export default function BottomNav() {
               >
                 <Icon active={item.active} />
                 <span
-                  className={`mt-1 text-[10px] font-medium ${
+                  className={`mt-1 text-[9px] font-medium ${
                     item.active ? "text-white" : "text-gray-300"
                   }`}
                 >
