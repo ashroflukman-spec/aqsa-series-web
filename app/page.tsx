@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { collection, getDocs, orderBy, query } from "firebase/firestore";
 import { db } from "../lib/firebase";
@@ -55,6 +55,7 @@ function extractYouTubeId(url: string) {
     /(?:youtu\.be\/)([^?&]+)/,
     /(?:youtube\.com\/embed\/)([^?&]+)/,
     /(?:youtube\.com\/shorts\/)([^?&]+)/,
+    /(?:youtube\.com\/live\/)([^?&]+)/,
   ];
 
   for (const pattern of patterns) {
@@ -84,6 +85,11 @@ export default function Page() {
   const [isSplashExiting, setIsSplashExiting] = useState(false);
   const [isSplashEntered, setIsSplashEntered] = useState(false);
   const [error, setError] = useState("");
+  const [activeVideoSlide, setActiveVideoSlide] = useState(0);
+  const [isVideosTransitioning, setIsVideosTransitioning] = useState(false);
+
+  const videoSliderRef = useRef<HTMLDivElement | null>(null);
+  const videosRedirectTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     const enterTimer = setTimeout(() => {
@@ -224,6 +230,58 @@ export default function Page() {
     return speakerMap[speakerId] || speakerId || "Speaker tidak diketahui";
   }
 
+  function navigateToVideos() {
+    if (isVideosTransitioning) return;
+
+    setIsVideosTransitioning(true);
+
+    window.setTimeout(() => {
+      router.push("/videos");
+    }, 260);
+  }
+
+  function handleVideoSliderScroll() {
+    const container = videoSliderRef.current;
+    if (!container) return;
+
+    const children = Array.from(container.children) as HTMLElement[];
+    if (children.length === 0) return;
+
+    const scrollLeft = container.scrollLeft;
+    let nearestIndex = 0;
+    let smallestDistance = Number.POSITIVE_INFINITY;
+
+    children.forEach((child, index) => {
+      const distance = Math.abs(child.offsetLeft - scrollLeft);
+      if (distance < smallestDistance) {
+        smallestDistance = distance;
+        nearestIndex = index;
+      }
+    });
+
+    setActiveVideoSlide(nearestIndex);
+  }
+
+  useEffect(() => {
+    if (videosRedirectTimerRef.current) {
+      window.clearTimeout(videosRedirectTimerRef.current);
+      videosRedirectTimerRef.current = null;
+    }
+
+    if (activeVideoSlide === highlightVideos.length && highlightVideos.length > 0) {
+      videosRedirectTimerRef.current = window.setTimeout(() => {
+        navigateToVideos();
+      }, 420);
+    }
+
+    return () => {
+      if (videosRedirectTimerRef.current) {
+        window.clearTimeout(videosRedirectTimerRef.current);
+        videosRedirectTimerRef.current = null;
+      }
+    };
+  }, [activeVideoSlide, highlightVideos.length]);
+
   return (
     <main className="relative flex min-h-screen justify-center overflow-hidden bg-gradient-to-b from-[#0f1115] to-[#1a1d24] text-white">
       {showSplash && (
@@ -313,6 +371,10 @@ export default function Page() {
             />
           </div>
         </div>
+      )}
+
+      {isVideosTransitioning && (
+        <div className="pointer-events-none absolute inset-0 z-40 bg-[#0f1115] animate-[aqsaFadeIn_260ms_ease-out_forwards]" />
       )}
 
       <div
@@ -436,13 +498,17 @@ export default function Page() {
               </button>
             </div>
 
-            <div className="-mx-6 overflow-x-auto px-6 pb-2">
-              <div className="flex gap-4">
+            <div className="-mx-6 overflow-x-auto px-6 pb-2 video-highlight-scroll">
+              <div
+                ref={videoSliderRef}
+                onScroll={handleVideoSliderScroll}
+                className="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-2 video-highlight-scroll"
+              >
                 {highlightVideos.map((video) => (
                   <div
                     key={video.id}
                     onClick={() => router.push("/videos")}
-                    className="group w-[86%] shrink-0 cursor-pointer overflow-hidden rounded-[26px] border border-white/10 bg-white/[0.04] shadow-[0_14px_40px_rgba(0,0,0,0.22)] backdrop-blur-xl transition duration-300 hover:-translate-y-1 hover:border-white/15 hover:bg-white/[0.06] hover:shadow-[0_20px_54px_rgba(0,0,0,0.3)]"
+                    className="group w-[86%] shrink-0 snap-start cursor-pointer overflow-hidden rounded-[26px] border border-white/10 bg-white/[0.04] shadow-[0_14px_40px_rgba(0,0,0,0.22)] backdrop-blur-xl transition duration-300 hover:-translate-y-1 hover:border-white/15 hover:bg-white/[0.06] hover:shadow-[0_20px_54px_rgba(0,0,0,0.3)]"
                   >
                     <div className="relative h-48">
                       {video.thumbnailUrl ? (
@@ -475,7 +541,85 @@ export default function Page() {
                     </div>
                   </div>
                 ))}
+
+                <div
+                  onClick={navigateToVideos}
+                  className="group w-[86%] shrink-0 snap-start cursor-pointer overflow-hidden rounded-[26px] border border-white/10 bg-white/[0.04] shadow-[0_14px_40px_rgba(0,0,0,0.22)] backdrop-blur-xl transition duration-300 hover:-translate-y-1 hover:border-white/15 hover:bg-white/[0.06] hover:shadow-[0_20px_54px_rgba(0,0,0,0.3)]"
+                >
+                  <div className="relative flex h-full min-h-[264px] flex-col justify-between overflow-hidden p-5">
+                    <div className="absolute inset-0 bg-gradient-to-br from-[#7A1F2B]/35 via-[#1b2029] to-[#10141b]" />
+                    <div className="absolute right-[-20px] top-[-20px] h-28 w-28 rounded-full bg-white/[0.06] blur-3xl" />
+                    <div className="absolute left-[-10px] bottom-[-20px] h-28 w-28 rounded-full bg-[#D4AF37]/10 blur-3xl" />
+
+                    <div className="relative">
+                      <span className="rounded-full border border-[#D4AF37]/30 bg-[#D4AF37]/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#E8D28A]">
+                        Full Library
+                      </span>
+                    </div>
+
+                    <div className="relative mt-12">
+                      <div className="text-[24px] font-semibold leading-[1.2] text-white">
+                        Lihat Semua Video
+                      </div>
+                      <div className="mt-2 text-sm text-white/55">
+                        Teruskan ke Video Library Aqsa Series
+                      </div>
+                    </div>
+
+                    <div className="relative mt-8 flex items-center justify-between">
+                      <div className="text-sm font-medium text-white/80">
+                        Swipe atau tekan →
+                      </div>
+
+                      <div className="flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/[0.06]">
+                        <svg
+                          width="18"
+                          height="18"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          className="text-white"
+                        >
+                          <path
+                            d="M9 6L15 12L9 18"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
+            </div>
+
+            <div className="mt-4 flex items-center justify-center gap-2">
+              {highlightVideos.map((_, index) => (
+                <button
+                  key={index}
+                  type="button"
+                  onClick={() => {
+                    const container = videoSliderRef.current;
+                    if (!container) return;
+
+                    const child = container.children[index] as HTMLElement | undefined;
+                    if (!child) return;
+
+                    container.scrollTo({
+                      left: child.offsetLeft,
+                      behavior: "smooth",
+                    });
+                    setActiveVideoSlide(index);
+                  }}
+                  className={`h-2 rounded-full transition-all duration-200 ${
+                    activeVideoSlide === index
+                      ? "w-5 bg-white/75"
+                      : "w-2 bg-white/20"
+                  }`}
+                  aria-label={`Pergi ke video highlight ${index + 1}`}
+                />
+              ))}
             </div>
           </div>
         )}
@@ -551,6 +695,26 @@ export default function Page() {
           </div>
         )}
       </div>
+
+      <style jsx global>{`
+        .video-highlight-scroll {
+          scrollbar-width: none;
+          -ms-overflow-style: none;
+        }
+
+        .video-highlight-scroll::-webkit-scrollbar {
+          display: none;
+        }
+
+        @keyframes aqsaFadeIn {
+          from {
+            opacity: 0;
+          }
+          to {
+            opacity: 1;
+          }
+        }
+      `}</style>
     </main>
   );
 }
