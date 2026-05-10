@@ -100,26 +100,15 @@ export default async function ShareVideoPage({ params }: ShareVideoPageProps) {
   const targetUrl = `/videos?video=${id}`;
 
   return (
-    <main className="min-h-screen bg-[#070A0F] text-white px-5 py-8">
-      <div className="mx-auto max-w-md">
-        <div className="mb-6 flex items-center gap-4">
-  <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-[#D4AF37]/25 bg-white/[0.04] p-2 shadow-lg shadow-black/30">
-    <img
-      src="Icon-2-Aqsa-Series.png"
-      alt="Aqsa Series"
-      className="h-full w-full object-contain"
-    />
-  </div>
-
-  <div>
-    <p className="text-xs uppercase tracking-[0.28em] text-[#D4AF37]">
-      Aqsa Series
-    </p>
-    <h1 className="mt-1 text-xl font-bold leading-tight">
-      Siri Pengetahuan Baitulmaqdis Kita Bermula Di Sini
-    </h1>
-  </div>
-</div>
+  <main className="min-h-screen bg-[#070A0F] text-white px-5 py-8">
+    <div className="mx-auto max-w-md">
+      <div className="mb-6 flex justify-center">
+        <img
+          src="/logo-icon.png"
+          alt="Aqsa Series"
+          className="block h-auto w-72 object-contain"
+        />
+      </div>
 
         <div className="overflow-hidden rounded-3xl border border-white/10 bg-white/[0.04] shadow-2xl">
           <img
