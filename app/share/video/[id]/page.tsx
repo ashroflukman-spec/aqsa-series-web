@@ -105,7 +105,7 @@ export default async function ShareVideoPage({ params }: ShareVideoPageProps) {
         <div className="mb-6 flex items-center gap-4">
   <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-[#D4AF37]/25 bg-white/[0.04] p-2 shadow-lg shadow-black/30">
     <img
-      src="/Icon 2 Aqsa Series.png"
+      src="Icon-2-Aqsa-Series.png"
       alt="Aqsa Series"
       className="h-full w-full object-contain"
     />
