@@ -91,8 +91,8 @@ export default function PremiumShareModal({
 
           <div>
             <label className="text-sm text-white/80">
-              Mesej / Muhasabah Caption
-            </label>
+  Caption / Refleksi Ringkas
+</label>
             <textarea
               value={caption}
               onChange={(e) => setCaption(e.target.value.slice(0, 300))}
@@ -131,11 +131,30 @@ export default function PremiumShareModal({
                   </p>
                 )}
 
-                <p className="text-sm leading-relaxed">{caption}</p>
+                <div className="rounded-2xl border border-[#C9A646]/40 bg-[#FFF8E8] p-4">
+  <div className="flex gap-3">
+    <div className="text-4xl font-serif leading-none text-[#B08A25]">
+      “
+    </div>
 
-                <p className="text-sm text-center">
-                  {tagline}
-                </p>
+    <div className="flex-1">
+      <p className="text-[15px] font-semibold italic leading-relaxed tracking-wide text-[#2D2410]">
+        {caption}
+      </p>
+
+      <div className="mt-3 flex items-center justify-end gap-3">
+        <span className="h-px w-8 bg-[#B08A25]/60" />
+        <p className="text-sm font-bold tracking-[0.08em] text-[#8A1F32]">
+          Al-Maqdisiy
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<p className="text-sm text-center">
+  {tagline}
+</p>
 
                 <div className="flex justify-center">
                   <div className="px-4 py-2 rounded-lg bg-red-800 text-white text-sm font-medium">
@@ -183,10 +202,13 @@ export default function PremiumShareModal({
               </a>
 
               <a
-                href={`https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`}
-                target="_blank"
-                className="space-y-2"
-              >
+  href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(
+    shareUrl
+  )}`}
+  target="_blank"
+  rel="noopener noreferrer"
+  className="space-y-2"
+>
                 <div className="mx-auto w-11 h-11 rounded-2xl bg-blue-600 flex items-center justify-center">
                   <Facebook size={20} />
                 </div>
