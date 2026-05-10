@@ -1,5 +1,6 @@
 "use client";
 
+import ShareEpisodeButton from "../../../../components/ShareEpisodeButton";
 import { useAudio } from "../../../../components/AudioProvider";
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -29,6 +30,13 @@ type EpisodeData = {
   originalChapterLabel?: string;
   durationSeconds?: number;
   displayOrder?: number;
+
+  shareTitle?: string;
+  shareDescription?: string;
+  shareNote?: string;
+  shareCtaText?: string;
+  shareImageUrl?: string;
+  shareStatus?: "draft" | "ready";
 };
 
 type SeriesData = {
@@ -120,21 +128,28 @@ export default function PlayerPage() {
         }
 
         const currentEpisode: EpisodeData = {
-          id: episodeSnap.id,
-          title: episodeData.title ?? "",
-          audioUrl: episodeData.audioUrl ?? "",
-          seriesId: episodeData.seriesId ?? "",
-          speakerId: episodeData.speakerId ?? "",
-          isDeleted: episodeData.isDeleted ?? false,
-          isPublished: episodeData.isPublished ?? true,
-          imageUrl: episodeData.imageUrl ?? "",
-          coverUrl: episodeData.coverUrl ?? "",
-          description: episodeData.description ?? "",
-          speakerName: episodeData.speakerName ?? "",
-          originalChapterLabel: episodeData.originalChapterLabel ?? "",
-          durationSeconds: episodeData.durationSeconds ?? 0,
-          displayOrder: episodeData.displayOrder ?? 0,
-        };
+  id: episodeSnap.id,
+  title: episodeData.title ?? "",
+  audioUrl: episodeData.audioUrl ?? "",
+  seriesId: episodeData.seriesId ?? "",
+  speakerId: episodeData.speakerId ?? "",
+  isDeleted: episodeData.isDeleted ?? false,
+  isPublished: episodeData.isPublished ?? true,
+  imageUrl: episodeData.imageUrl ?? "",
+  coverUrl: episodeData.coverUrl ?? "",
+  description: episodeData.description ?? "",
+  speakerName: episodeData.speakerName ?? "",
+  originalChapterLabel: episodeData.originalChapterLabel ?? "",
+  durationSeconds: episodeData.durationSeconds ?? 0,
+  displayOrder: episodeData.displayOrder ?? 0,
+
+  shareTitle: episodeData.shareTitle ?? "",
+  shareDescription: episodeData.shareDescription ?? "",
+  shareNote: episodeData.shareNote ?? "",
+  shareCtaText: episodeData.shareCtaText ?? "",
+  shareImageUrl: episodeData.shareImageUrl ?? "",
+  shareStatus: episodeData.shareStatus ?? "draft",
+};
 
         setEpisode(currentEpisode);
 
@@ -458,9 +473,24 @@ export default function PlayerPage() {
     episode?.imageUrl ||
     "https://images.unsplash.com/photo-1521295121783-8a321d551ad2?q=80&w=1200&auto=format&fit=crop";
 
-  const seriesTitle = (series?.title || "").trim().toLowerCase();
-  const episodeTitle = (episode?.title || "").trim().toLowerCase();
-  const showSeriesTitle = !!seriesTitle && seriesTitle !== episodeTitle;
+ const seriesTitle = (series?.title || "").trim().toLowerCase();
+const episodeTitle = (episode?.title || "").trim().toLowerCase();
+const showSeriesTitle = !!seriesTitle && seriesTitle !== episodeTitle;
+
+const shareTitle = episode?.shareTitle || episode?.title || "Aqsa Series";
+const shareDescription =
+  episode?.shareDescription ||
+  episode?.description ||
+  "Dengar episod ini di Aqsa Series.";
+
+const shareNote = episode?.shareNote || "";
+const shareCtaText = episode?.shareCtaText || "Dengar sekarang di Aqsa Series";
+
+const shareUrl =
+  typeof window !== "undefined"
+    ? `${window.location.origin}/share/${seriesId}/${episodeId}`
+    : `/share/${seriesId}/${episodeId}`;
+
 
   if (error) {
     return (
@@ -695,13 +725,21 @@ export default function PlayerPage() {
               </button>
             </div>
 
+           <div className="mt-4">
+  <ShareEpisodeButton
+    title={shareTitle}
+    description={shareDescription}
+    shareUrl={shareUrl}
+  />
+</div> 
+
             {!episode.audioUrl && (
               <p className="mt-4 text-sm text-gray-400">Audio belum dimuat naik.</p>
             )}
           </div>
         </div>
 
-        {(episode.description || episode.speakerName || episode.speakerId) && (
+        {(episode.description || shareNote || shareCtaText || episode.speakerName || episode.speakerId) && (
           <div className="mt-6 rounded-[28px] border border-white/10 bg-white/[0.04] p-5 shadow-[0_14px_40px_rgba(0,0,0,0.2)] backdrop-blur-xl">
             <div className="mb-3">
               <h2 className="text-[13px] font-semibold uppercase tracking-[0.22em] text-white/50">
@@ -717,6 +755,18 @@ export default function PlayerPage() {
             ) : (
               <p className="text-sm text-white/50">Tiada huraian untuk episod ini.</p>
             )}
+
+            {shareNote && (
+  <div className="mt-4 rounded-2xl border border-[#D4AF37]/20 bg-[#D4AF37]/10 px-4 py-3 text-sm text-[#E8D28A]">
+    {shareNote}
+  </div>
+)}
+
+{shareCtaText && (
+  <p className="mt-4 text-sm font-medium text-white/75">
+    {shareCtaText}
+  </p>
+)}
           </div>
         )}
 

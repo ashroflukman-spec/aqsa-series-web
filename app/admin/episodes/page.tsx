@@ -37,6 +37,13 @@ type EpisodeItem = {
   originalChapterLabel?: string;
   isPublished?: boolean;
   isDeleted?: boolean;
+
+  shareTitle?: string;
+  shareDescription?: string;
+  shareNote?: string;
+  shareCtaText?: string;
+  shareImageUrl?: string;
+  shareStatus?: "draft" | "ready";
 };
 
 type PreviewItem = {
@@ -111,6 +118,13 @@ export default function AdminEpisodesPage() {
   const [editAudioFileName, setEditAudioFileName] = useState("");
   const [editExistingAudioUrl, setEditExistingAudioUrl] = useState("");
   const [editDurationSeconds, setEditDurationSeconds] = useState(0);
+  const [editShareTitle, setEditShareTitle] = useState("");
+const [editShareDescription, setEditShareDescription] = useState("");
+const [editShareNote, setEditShareNote] = useState("");
+const [editShareCtaText, setEditShareCtaText] = useState("Dengar sekarang di Aqsa Series");
+const [editShareImageUrl, setEditShareImageUrl] = useState("");
+const [editShareStatus, setEditShareStatus] = useState<"draft" | "ready">("draft");
+const [generatingShareCopy, setGeneratingShareCopy] = useState(false);
 
   const [expandedSeries, setExpandedSeries] = useState<Record<string, boolean>>(
     {}
@@ -175,18 +189,25 @@ export default function AdminEpisodesPage() {
   }
 
   function resetEditForm() {
-    setEditingEpisodeId("");
-    setEditTitle("");
-    setEditDescription("");
-    setEditSeriesId("");
-    setEditDisplayOrder("1");
-    setEditOriginalChapterLabel("");
-    setEditIsPublished(true);
-    setEditAudioFile(null);
-    setEditAudioFileName("");
-    setEditExistingAudioUrl("");
-    setEditDurationSeconds(0);
-  }
+  setEditingEpisodeId("");
+  setEditTitle("");
+  setEditDescription("");
+  setEditSeriesId("");
+  setEditDisplayOrder("1");
+  setEditOriginalChapterLabel("");
+  setEditIsPublished(true);
+  setEditAudioFile(null);
+  setEditAudioFileName("");
+  setEditExistingAudioUrl("");
+  setEditDurationSeconds(0);
+
+  setEditShareTitle("");
+  setEditShareDescription("");
+  setEditShareNote("");
+  setEditShareCtaText("Dengar sekarang di Aqsa Series");
+  setEditShareImageUrl("");
+  setEditShareStatus("draft");
+}
 
   function parseTitles() {
     return bulkTitles
@@ -273,21 +294,29 @@ export default function AdminEpisodesPage() {
         }
 
         await addDoc(collection(db, "episodes"), {
-          title,
-          slug: slugify(title),
-          description: "",
-          seriesId: selectedSeries,
-          speakerId,
-          audioUrl,
-          durationSeconds,
-          displayOrder: i + 1,
-          originalChapterLabel: `Bab ${i + 1}`,
-          isPublished: true,
-          isDeleted: false,
-          deletedAt: null,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-        });
+  title,
+  slug: slugify(title),
+  description: "",
+  seriesId: selectedSeries,
+  speakerId,
+  audioUrl,
+  durationSeconds,
+  displayOrder: i + 1,
+  originalChapterLabel: `Bab ${i + 1}`,
+  isPublished: true,
+  isDeleted: false,
+
+  shareTitle: "",
+  shareDescription: "",
+  shareNote: "",
+  shareCtaText: "Dengar sekarang di Aqsa Series",
+  shareImageUrl: "",
+  shareStatus: "draft",
+
+  deletedAt: null,
+  createdAt: serverTimestamp(),
+  updatedAt: serverTimestamp(),
+});
       }
 
       setMessage("Bulk upload berjaya. Episod dan audio telah disimpan.");
@@ -328,21 +357,29 @@ export default function AdminEpisodesPage() {
   }
 
   function handleEdit(item: EpisodeItem) {
-    setEditingEpisodeId(item.id);
-    setEditTitle(item.title || "");
-    setEditDescription(item.description || "");
-    setEditSeriesId(item.seriesId || "");
-    setEditDisplayOrder(String(item.displayOrder || 1));
-    setEditOriginalChapterLabel(item.originalChapterLabel || "");
-    setEditIsPublished(item.isPublished === true);
-    setEditAudioFile(null);
-    setEditAudioFileName("");
-    setEditExistingAudioUrl(item.audioUrl || "");
-    setEditDurationSeconds(item.durationSeconds || 0);
-    setMessage("");
-    setError("");
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }
+  setEditingEpisodeId(item.id);
+  setEditTitle(item.title || "");
+  setEditDescription(item.description || "");
+  setEditSeriesId(item.seriesId || "");
+  setEditDisplayOrder(String(item.displayOrder || 1));
+  setEditOriginalChapterLabel(item.originalChapterLabel || "");
+  setEditIsPublished(item.isPublished === true);
+  setEditAudioFile(null);
+  setEditAudioFileName("");
+  setEditExistingAudioUrl(item.audioUrl || "");
+  setEditDurationSeconds(item.durationSeconds || 0);
+
+  setEditShareTitle(item.shareTitle || "");
+  setEditShareDescription(item.shareDescription || "");
+  setEditShareNote(item.shareNote || "");
+  setEditShareCtaText(item.shareCtaText || "Dengar sekarang di Aqsa Series");
+  setEditShareImageUrl(item.shareImageUrl || "");
+  setEditShareStatus(item.shareStatus === "ready" ? "ready" : "draft");
+
+  setMessage("");
+  setError("");
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
 
   async function handleEditAudioChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -423,18 +460,26 @@ export default function AdminEpisodesPage() {
       }
 
       await updateDoc(doc(db, "episodes", editingEpisodeId), {
-        title: editTitle.trim(),
-        slug: slugify(editTitle),
-        description: editDescription.trim(),
-        seriesId: editSeriesId,
-        speakerId,
-        audioUrl: finalAudioUrl,
-        durationSeconds: editDurationSeconds || 0,
-        displayOrder: Number(editDisplayOrder) || 1,
-        originalChapterLabel: editOriginalChapterLabel.trim(),
-        isPublished: editIsPublished,
-        updatedAt: serverTimestamp(),
-      });
+  title: editTitle.trim(),
+  slug: slugify(editTitle),
+  description: editDescription.trim(),
+  seriesId: editSeriesId,
+  speakerId,
+  audioUrl: finalAudioUrl,
+  durationSeconds: editDurationSeconds || 0,
+  displayOrder: Number(editDisplayOrder) || 1,
+  originalChapterLabel: editOriginalChapterLabel.trim(),
+  isPublished: editIsPublished,
+
+  shareTitle: editShareTitle.trim(),
+  shareDescription: editShareDescription.trim(),
+  shareNote: editShareNote.trim(),
+  shareCtaText: editShareCtaText.trim(),
+  shareImageUrl: editShareImageUrl.trim(),
+  shareStatus: editShareStatus,
+
+  updatedAt: serverTimestamp(),
+});
 
       setMessage("Episode berjaya dikemaskini.");
       resetEditForm();
@@ -445,6 +490,46 @@ export default function AdminEpisodesPage() {
       setSavingEdit(false);
     }
   }
+
+async function handleGenerateShareCopy() {
+  try {
+    setGeneratingShareCopy(true);
+    setMessage("");
+    setError("");
+
+    const baseTitle = editTitle.trim();
+    const baseDescription = editDescription.trim();
+    const seriesName =
+      seriesList.find((s) => s.id === editSeriesId)?.title || "Aqsa Series";
+
+    if (!baseTitle) {
+      setError("Isi tajuk episod dahulu sebelum jana cadangan AI.");
+      return;
+    }
+
+    const generatedTitle = `${baseTitle} | ${seriesName}`;
+
+    const generatedDescription =
+      baseDescription ||
+      `Ikuti kupasan episod ini dalam Siri Pengetahuan Baitulmaqdis bersama Aqsa Series.`;
+
+    const generatedNote =
+      `Dengarkan episod ini dan kongsikan kepada keluarga serta sahabat agar manfaatnya terus tersebar.`;
+
+    const generatedCta = "Dengar sekarang di Aqsa Series";
+
+    setEditShareTitle((prev) => prev || generatedTitle);
+    setEditShareDescription((prev) => prev || generatedDescription);
+    setEditShareNote((prev) => prev || generatedNote);
+    setEditShareCtaText((prev) => prev || generatedCta);
+
+    setMessage("Cadangan share berjaya dijana.");
+  } catch (err: any) {
+    setError(err?.message || "Gagal menjana cadangan share.");
+  } finally {
+    setGeneratingShareCopy(false);
+  }
+}
 
   function toggleSeries(seriesId: string) {
     setExpandedSeries((prev) => ({
@@ -622,6 +707,81 @@ Bab 3 - Strategi Pembebasan`}
                 placeholder="Description"
                 className="w-full rounded-xl bg-[#14161b] px-4 py-3"
               />
+
+              <div className="rounded-2xl border border-white/10 bg-[#14161b] p-4 space-y-4">
+  <div className="flex items-center justify-between">
+    <p className="text-sm font-semibold text-white">Share Settings</p>
+
+    <button
+      type="button"
+      onClick={handleGenerateShareCopy}
+      disabled={generatingShareCopy}
+      className="rounded-xl border border-[#D4AF37]/20 bg-[#D4AF37]/10 px-3 py-2 text-xs font-semibold text-[#E8D28A] disabled:opacity-60"
+    >
+      {generatingShareCopy ? "Menjana..." : "Jana Cadangan AI"}
+    </button>
+  </div>
+
+  <input
+    value={editShareTitle}
+    onChange={(e) => setEditShareTitle(e.target.value)}
+    placeholder="Share Title"
+    className="w-full rounded-xl bg-[#0f1115] px-4 py-3"
+  />
+
+  <textarea
+    value={editShareDescription}
+    onChange={(e) => setEditShareDescription(e.target.value)}
+    placeholder="Share Description"
+    className="w-full rounded-xl bg-[#0f1115] px-4 py-3"
+  />
+
+  <textarea
+    value={editShareNote}
+    onChange={(e) => setEditShareNote(e.target.value)}
+    placeholder="Share Note"
+    className="w-full rounded-xl bg-[#0f1115] px-4 py-3"
+  />
+
+  <input
+    value={editShareCtaText}
+    onChange={(e) => setEditShareCtaText(e.target.value)}
+    placeholder="CTA Text"
+    className="w-full rounded-xl bg-[#0f1115] px-4 py-3"
+  />
+
+  <input
+    value={editShareImageUrl}
+    onChange={(e) => setEditShareImageUrl(e.target.value)}
+    placeholder="Share Image URL (optional)"
+    className="w-full rounded-xl bg-[#0f1115] px-4 py-3"
+  />
+
+  <div className="rounded-2xl bg-[#0f1115] border border-white/10 px-4 py-3 flex items-center justify-between">
+    <div>
+      <p className="text-sm font-medium">Share Status</p>
+      <p className="text-xs text-gray-400 mt-1">
+        Draft atau sedia digunakan untuk share
+      </p>
+    </div>
+
+    <button
+      type="button"
+      onClick={() =>
+        setEditShareStatus((prev) => (prev === "ready" ? "draft" : "ready"))
+      }
+      className={`w-14 h-8 rounded-full relative transition ${
+        editShareStatus === "ready" ? "bg-[#D4AF37]" : "bg-gray-600"
+      }`}
+    >
+      <span
+        className={`absolute top-1 h-6 w-6 rounded-full bg-white transition ${
+          editShareStatus === "ready" ? "left-7" : "left-1"
+        }`}
+      />
+    </button>
+  </div>
+</div>
 
               <select
                 value={editSeriesId}
@@ -808,15 +968,27 @@ Bab 3 - Strategi Pembebasan`}
                               </div>
                             </div>
 
-                            <div
-                              className={`text-[11px] px-2 py-1 rounded-full whitespace-nowrap ${
-                                ep.isPublished
-                                  ? "bg-emerald-500/15 text-emerald-300"
-                                  : "bg-gray-500/15 text-gray-300"
-                              }`}
-                            >
-                              {ep.isPublished ? "Publish" : "Draft"}
-                            </div>
+                            <div className="flex flex-col items-end gap-2">
+  <div
+    className={`text-[11px] px-2 py-1 rounded-full whitespace-nowrap ${
+      ep.isPublished
+        ? "bg-emerald-500/15 text-emerald-300"
+        : "bg-gray-500/15 text-gray-300"
+    }`}
+  >
+    {ep.isPublished ? "Publish" : "Draft"}
+  </div>
+
+  <div
+    className={`text-[11px] px-2 py-1 rounded-full whitespace-nowrap ${
+      ep.shareStatus === "ready"
+        ? "bg-[#D4AF37]/15 text-[#E8D28A]"
+        : "bg-white/10 text-white/55"
+    }`}
+  >
+    {ep.shareStatus === "ready" ? "Share Ready" : "Share Draft"}
+  </div>
+</div>
                           </div>
 
                           <div className="mt-4 grid grid-cols-2 gap-3">

@@ -18,6 +18,8 @@ export default function MiniPlayer() {
   const [mounted, setMounted] = useState(false);
   const [showMiniPlayer, setShowMiniPlayer] = useState(true);
   const [currentItem, setCurrentItem] = useState<MiniPlayerState | null>(null);
+  const [shouldRender, setShouldRender] = useState(false);
+  const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -61,26 +63,55 @@ export default function MiniPlayer() {
   }, []);
 
   const hiddenOnRoutes = [
-    "/admin",
-    "/admin/login",
-    "/admin/speakers",
-    "/admin/series",
-    "/admin/episodes",
-    "/admin/trash",
-    "/admin/videos",
-  ];
+  "/admin",
+  "/admin/login",
+  "/admin/speakers",
+  "/admin/series",
+  "/admin/episodes",
+  "/admin/trash",
+  "/admin/videos",
+  "/videos",
+];
 
-  if (
-    !mounted ||
-    !showMiniPlayer ||
-    !currentItem ||
-    hiddenOnRoutes.some((route) => pathname.startsWith(route))
-  ) {
-    return null;
+const isHiddenRoute = hiddenOnRoutes.some((route) => pathname.startsWith(route));
+const shouldShow = mounted && showMiniPlayer && !!currentItem && !isHiddenRoute;
+
+useEffect(() => {
+  let timeoutId: number | undefined;
+
+  if (shouldShow) {
+    setShouldRender(true);
+
+    requestAnimationFrame(() => {
+      setIsVisible(true);
+    });
+  } else {
+    setIsVisible(false);
+
+    timeoutId = window.setTimeout(() => {
+      setShouldRender(false);
+    }, 260);
   }
 
+  return () => {
+    if (timeoutId) window.clearTimeout(timeoutId);
+  };
+}, [shouldShow]);
+
+  const safeCurrentItem = currentItem;
+
+if (!shouldRender || !safeCurrentItem) {
+  return null;
+}
+
   return (
-    <div className="fixed bottom-[4.95rem] left-1/2 z-40 w-[calc(100%-1.2rem)] max-w-md -translate-x-1/2">
+    <div
+  className={`fixed bottom-[4.95rem] left-1/2 z-40 w-[calc(100%-1.2rem)] max-w-md -translate-x-1/2 transform transition-all duration-300 ease-out ${
+    isVisible
+      ? "translate-y-0 opacity-100"
+      : "translate-y-3 opacity-0 pointer-events-none"
+  }`}
+>
       <div className="relative overflow-hidden rounded-t-[22px] border-x border-t border-white/10 bg-[#0f141d]/72 backdrop-blur-[24px] shadow-[0_14px_38px_rgba(0,0,0,0.42)]">
         <div className="absolute inset-0 pointer-events-none">
           <div className="absolute inset-0 bg-gradient-to-b from-white/[0.08] via-white/[0.025] to-black/[0.10]" />
@@ -93,17 +124,17 @@ export default function MiniPlayer() {
 
         <button
           onClick={() =>
-            router.push(
-              `/player/${currentItem.seriesId}/${currentItem.episodeId}`
-            )
-          }
+  router.push(
+    `/player/${safeCurrentItem.seriesId}/${safeCurrentItem.episodeId}`
+  )
+}
           className="group relative flex w-full items-center gap-3 px-3 py-2.5 text-left transition active:scale-[0.995]"
         >
           <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-[13px] border border-white/15 bg-white/[0.04] shadow-[inset_0_1px_0_rgba(255,255,255,0.10)]">
-            {currentItem.coverUrl ? (
-              <img
-                src={currentItem.coverUrl}
-                alt={currentItem.seriesTitle}
+            {safeCurrentItem.coverUrl ? (
+  <img
+    src={safeCurrentItem.coverUrl}
+    alt={safeCurrentItem.seriesTitle}
                 className="h-full w-full object-cover"
               />
             ) : (
@@ -121,10 +152,10 @@ export default function MiniPlayer() {
               Now Playing
             </p>
             <p className="mt-1 truncate text-[13px] font-semibold text-white">
-              {currentItem.episodeTitle}
+              {safeCurrentItem.episodeTitle}
             </p>
             <p className="mt-0.5 truncate text-[11px] text-white/72">
-              {currentItem.seriesTitle}
+              {safeCurrentItem.seriesTitle}
             </p>
           </div>
 

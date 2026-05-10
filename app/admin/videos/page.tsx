@@ -25,6 +25,8 @@ type VideoItem = {
   description?: string;
   thumbnailUrl?: string;
   sortOrder: number;
+  isPinned?: boolean;
+  createdAt?: any;
   isPublished: boolean;
   isDeleted?: boolean;
 };
@@ -70,6 +72,7 @@ export default function AdminVideosPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
+  const [importingMeta, setImportingMeta] = useState(false);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
 
@@ -81,8 +84,14 @@ export default function AdminVideosPage() {
   const [youtubeUrl, setYouTubeUrl] = useState("");
   const [youtubeId, setYouTubeId] = useState("");
   const [description, setDescription] = useState("");
-  const [sortOrder, setSortOrder] = useState("1");
-  const [isPublished, setIsPublished] = useState(true);
+const [sortOrder, setSortOrder] = useState("1");
+const [isPinned, setIsPinned] = useState(false);
+const [isPublished, setIsPublished] = useState(true);
+const [sourceTitle, setSourceTitle] = useState("");
+const [sourceDescription, setSourceDescription] = useState("");
+const [sourceChannelTitle, setSourceChannelTitle] = useState("");
+const [sourcePublishedAt, setSourcePublishedAt] = useState("");
+const [sourceThumbnailUrl, setSourceThumbnailUrl] = useState("");
 
   useEffect(() => {
     loadVideos();
@@ -103,19 +112,21 @@ export default function AdminVideosPage() {
             docItem.data().youtubeId ?? extractYouTubeId(rawYoutubeUrl);
 
           return {
-            id: docItem.id,
-            title: docItem.data().title ?? "",
-            speaker: docItem.data().speaker ?? "",
-            category: docItem.data().category ?? "Umum",
-            youtubeUrl: rawYoutubeUrl,
-            youtubeId: rawYoutubeId,
-            description: docItem.data().description ?? "",
-            thumbnailUrl:
-              docItem.data().thumbnailUrl ?? getYouTubeThumbnail(rawYoutubeId),
-            sortOrder: docItem.data().sortOrder ?? 0,
-            isPublished: docItem.data().isPublished ?? false,
-            isDeleted: docItem.data().isDeleted ?? false,
-          };
+  id: docItem.id,
+  title: docItem.data().title ?? "",
+  speaker: docItem.data().speaker ?? "",
+  category: docItem.data().category ?? "Umum",
+  youtubeUrl: rawYoutubeUrl,
+  youtubeId: rawYoutubeId,
+  description: docItem.data().description ?? "",
+  thumbnailUrl:
+    docItem.data().thumbnailUrl ?? getYouTubeThumbnail(rawYoutubeId),
+  sortOrder: docItem.data().sortOrder ?? 0,
+  isPinned: docItem.data().isPinned ?? false,
+  createdAt: docItem.data().createdAt ?? null,
+  isPublished: docItem.data().isPublished ?? false,
+  isDeleted: docItem.data().isDeleted ?? false,
+};
         })
         .filter((item) => item.isDeleted !== true);
 
@@ -128,93 +139,151 @@ export default function AdminVideosPage() {
   }
 
   function resetForm() {
-    setEditingId("");
-    setTitle("");
-    setSpeaker("");
-    setCategory("Tadabbur");
-    setYouTubeUrl("");
-    setYouTubeId("");
-    setDescription("");
-    setSortOrder("1");
-    setIsPublished(true);
-  }
+  setEditingId("");
+  setTitle("");
+  setSpeaker("");
+  setCategory("Tadabbur");
+  setYouTubeUrl("");
+  setYouTubeId("");
+  setDescription("");
+  setSortOrder("1");
+  setIsPinned(false);
+  setIsPublished(true);
+  setSourceTitle("");
+  setSourceDescription("");
+  setSourceChannelTitle("");
+  setSourcePublishedAt("");
+  setSourceThumbnailUrl("");
+}
 
-  async function handleSave() {
-    try {
-      setSaving(true);
-      setMessage("");
-      setError("");
-
-      if (!title.trim()) {
-        setError("Tajuk video wajib diisi.");
-        return;
-      }
-
-      if (!speaker.trim()) {
-        setError("Nama penyampai wajib diisi.");
-        return;
-      }
-
-      if (!youtubeUrl.trim()) {
-        setError("URL YouTube wajib diisi.");
-        return;
-      }
-
-      const finalYoutubeId = youtubeId.trim() || extractYouTubeId(youtubeUrl.trim());
-
-      if (!finalYoutubeId) {
-        setError("YouTube ID tidak dapat dikesan. Sila semak URL YouTube.");
-        return;
-      }
-
-      const payload = {
-        title: title.trim(),
-        speaker: speaker.trim(),
-        category: category.trim(),
-        youtubeUrl: youtubeUrl.trim(),
-        youtubeId: finalYoutubeId,
-        description: description.trim(),
-        thumbnailUrl: getYouTubeThumbnail(finalYoutubeId),
-        sortOrder: Number(sortOrder) || 1,
-        isPublished,
-        isDeleted: false,
-        updatedAt: serverTimestamp(),
-      };
-
-      if (editingId) {
-        await updateDoc(doc(db, "videos", editingId), payload);
-        setMessage("Video berjaya dikemaskini.");
-      } else {
-        await addDoc(collection(db, "videos"), {
-          ...payload,
-          createdAt: serverTimestamp(),
-        });
-        setMessage("Video baru berjaya ditambah.");
-      }
-
-      resetForm();
-      await loadVideos();
-    } catch (err: any) {
-      setError(err?.message || "Gagal menyimpan video.");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  function handleEdit(video: VideoItem) {
-    setEditingId(video.id);
-    setTitle(video.title || "");
-    setSpeaker(video.speaker || "");
-    setCategory(video.category || "Umum");
-    setYouTubeUrl(video.youtubeUrl || "");
-    setYouTubeId(video.youtubeId || "");
-    setDescription(video.description || "");
-    setSortOrder(String(video.sortOrder || 1));
-    setIsPublished(video.isPublished === true);
+async function handleImportYouTubeMeta() {
+  try {
+    setImportingMeta(true);
     setMessage("");
     setError("");
-    window.scrollTo({ top: 0, behavior: "smooth" });
+
+    if (!youtubeUrl.trim() && !youtubeId.trim()) {
+      setError("Sila isi URL YouTube atau YouTube ID dahulu.");
+      return;
+    }
+
+    const queryString = youtubeId.trim()
+      ? `youtubeId=${encodeURIComponent(youtubeId.trim())}`
+      : `url=${encodeURIComponent(youtubeUrl.trim())}`;
+
+    const response = await fetch(`/api/youtube-meta?${queryString}`, {
+      method: "GET",
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      setError(data?.error || "Gagal import metadata YouTube.");
+      return;
+    }
+
+    setYouTubeId(data.youtubeId || "");
+    setTitle((prev) => prev.trim() || data.title || "");
+    setSpeaker((prev) => prev.trim() || data.channelTitle || "");
+    setDescription((prev) => prev.trim() || data.description || "");
+
+    setSourceTitle(data.title || "");
+    setSourceDescription(data.description || "");
+    setSourceChannelTitle(data.channelTitle || "");
+    setSourcePublishedAt(data.publishedAt || "");
+    setSourceThumbnailUrl(data.thumbnailUrl || "");
+
+    setMessage("Metadata YouTube berjaya diimport.");
+  } catch (err: any) {
+    setError(err?.message || "Gagal import metadata YouTube.");
+  } finally {
+    setImportingMeta(false);
   }
+}
+
+async function handleSave() {
+  try {
+    setSaving(true);
+    setMessage("");
+    setError("");
+
+    if (!title.trim()) {
+      setError("Tajuk video wajib diisi.");
+      return;
+    }
+
+    if (!speaker.trim()) {
+      setError("Nama penyampai wajib diisi.");
+      return;
+    }
+
+    if (!youtubeUrl.trim()) {
+      setError("URL YouTube wajib diisi.");
+      return;
+    }
+
+    const finalYoutubeId =
+      youtubeId.trim() || extractYouTubeId(youtubeUrl.trim());
+
+    if (!finalYoutubeId) {
+      setError("YouTube ID tidak dapat dikesan. Sila semak URL YouTube.");
+      return;
+    }
+
+    const payload = {
+      title: title.trim(),
+      speaker: speaker.trim(),
+      category: category.trim(),
+      youtubeUrl: youtubeUrl.trim(),
+      youtubeId: finalYoutubeId,
+      description: description.trim(),
+      thumbnailUrl: getYouTubeThumbnail(finalYoutubeId),
+      sortOrder: Number(sortOrder) || 1,
+      isPinned,
+      isPublished,
+      isDeleted: false,
+      updatedAt: serverTimestamp(),
+      sourceTitle,
+      sourceDescription,
+      sourceChannelTitle,
+      sourcePublishedAt,
+      sourceThumbnailUrl,
+    };
+
+    if (editingId) {
+      await updateDoc(doc(db, "videos", editingId), payload);
+      setMessage("Video berjaya dikemaskini.");
+    } else {
+      await addDoc(collection(db, "videos"), {
+        ...payload,
+        createdAt: serverTimestamp(),
+      });
+      setMessage("Video baru berjaya ditambah.");
+    }
+
+    resetForm();
+    await loadVideos();
+  } catch (err: any) {
+    setError(err?.message || "Gagal menyimpan video.");
+  } finally {
+    setSaving(false);
+  }
+}
+  function handleEdit(video: VideoItem) {
+  setEditingId(video.id);
+  setTitle(video.title || "");
+  setSpeaker(video.speaker || "");
+  setCategory(video.category || "Umum");
+  setYouTubeUrl(video.youtubeUrl || "");
+  setYouTubeId(video.youtubeId || "");
+  setDescription(video.description || "");
+  setSortOrder(String(video.sortOrder || 1));
+  setIsPinned(video.isPinned === true);
+  setIsPublished(video.isPublished === true);
+  setMessage("");
+  setError("");
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
 
   async function handleSoftDelete(videoId: string) {
     const confirmed = window.confirm("Pindahkan video ini ke Trash?");
@@ -347,6 +416,15 @@ export default function AdminVideosPage() {
                 className="w-full rounded-2xl border border-white/10 bg-[#16191f] px-4 py-3 text-sm text-white outline-none"
               />
 
+              <button
+  type="button"
+  onClick={handleImportYouTubeMeta}
+  disabled={importingMeta}
+  className="w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-semibold text-white/90 transition hover:bg-white/[0.06] disabled:opacity-60"
+>
+  {importingMeta ? "Importing..." : "Import Metadata YouTube"}
+</button>
+
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
@@ -354,12 +432,28 @@ export default function AdminVideosPage() {
                 className="w-full rounded-2xl border border-white/10 bg-[#16191f] px-4 py-3 text-sm text-white outline-none min-h-[110px]"
               />
 
-              <input
-                value={sortOrder}
-                onChange={(e) => setSortOrder(e.target.value)}
-                placeholder="Sort Order"
-                className="w-full rounded-2xl border border-white/10 bg-[#16191f] px-4 py-3 text-sm text-white outline-none"
-              />
+              <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-[#16191f] px-4 py-3">
+  <div>
+    <span className="text-sm text-white">Pin di atas kategori</span>
+    <p className="mt-1 text-xs text-white/45">
+      Video pinned akan sentiasa dipaparkan paling atas.
+    </p>
+  </div>
+
+  <button
+    type="button"
+    onClick={() => setIsPinned((prev) => !prev)}
+    className={`relative h-7 w-12 rounded-full transition ${
+      isPinned ? "bg-[#D4AF37]" : "bg-white/15"
+    }`}
+  >
+    <span
+      className={`absolute top-1 h-5 w-5 rounded-full bg-white transition ${
+        isPinned ? "left-6" : "left-1"
+      }`}
+    />
+  </button>
+</div>
 
               <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-[#16191f] px-4 py-3">
                 <span className="text-sm text-white">Publish</span>
@@ -425,96 +519,100 @@ export default function AdminVideosPage() {
           </div>
 
           {loading && (
-            <div className="rounded-2xl bg-[#1f232b] p-5 text-sm text-gray-300">
-              Sedang memuatkan video...
+  <div className="rounded-2xl bg-[#1f232b] p-5 text-sm text-gray-300">
+    Sedang memuatkan video...
+  </div>
+)}
+
+{!loading && filteredVideos.length === 0 && (
+  <div className="rounded-2xl bg-[#1f232b] p-5 text-sm text-gray-400">
+    Tiada video dijumpai.
+  </div>
+)}
+
+{!loading && filteredVideos.length > 0 && (
+  <div className="space-y-4">
+    {filteredVideos.map((video) => (
+      <div
+        key={video.id}
+        className="overflow-hidden rounded-[24px] border border-white/10 bg-white/[0.04] shadow-[0_14px_30px_rgba(0,0,0,0.18)]"
+      >
+        <div className="flex gap-4 p-4">
+          <div className="relative h-24 w-36 shrink-0 overflow-hidden rounded-2xl bg-[#16191f]">
+            {video.thumbnailUrl ? (
+              <img
+                src={video.thumbnailUrl}
+                alt={video.title}
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center text-xs text-gray-500">
+                No Thumbnail
+              </div>
+            )}
+          </div>
+
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="rounded-full border border-[#D4AF37]/30 bg-[#D4AF37]/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#E8D28A]">
+                {video.category}
+              </span>
+
+              {video.isPinned && (
+                <span className="rounded-full bg-[#D4AF37]/15 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#E8D28A]">
+                  Pinned
+                </span>
+              )}
+
+              <span
+                className={`rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] ${
+                  video.isPublished
+                    ? "bg-emerald-500/15 text-emerald-300"
+                    : "bg-white/10 text-white/60"
+                }`}
+              >
+                {video.isPublished ? "Published" : "Draft"}
+              </span>
             </div>
-          )}
 
-          {!loading && filteredVideos.length === 0 && (
-            <div className="rounded-2xl bg-[#1f232b] p-5 text-sm text-gray-400">
-              Tiada video dijumpai.
-            </div>
-          )}
+            <p className="mt-3 line-clamp-2 text-[15px] font-semibold leading-[1.35] text-white">
+              {video.title}
+            </p>
 
-          {!loading && filteredVideos.length > 0 && (
-            <div className="space-y-4">
-              {filteredVideos.map((video) => (
-                <div
-                  key={video.id}
-                  className="overflow-hidden rounded-[24px] border border-white/10 bg-white/[0.04] shadow-[0_14px_30px_rgba(0,0,0,0.18)]"
-                >
-                  <div className="flex gap-4 p-4">
-                    <div className="relative h-24 w-36 shrink-0 overflow-hidden rounded-2xl bg-[#16191f]">
-                      {video.thumbnailUrl ? (
-                        <img
-                          src={video.thumbnailUrl}
-                          alt={video.title}
-                          className="h-full w-full object-cover"
-                        />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center text-xs text-gray-500">
-                          No Thumbnail
-                        </div>
-                      )}
-                    </div>
+            <p className="mt-2 text-sm text-white/45">{video.speaker}</p>
 
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="rounded-full border border-[#D4AF37]/30 bg-[#D4AF37]/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#E8D28A]">
-                          {video.category}
-                        </span>
+            <p className="mt-2 text-xs text-white/35">
+              Sort Order: {video.sortOrder}
+            </p>
+          </div>
+        </div>
 
-                        <span
-                          className={`rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] ${
-                            video.isPublished
-                              ? "bg-emerald-500/15 text-emerald-300"
-                              : "bg-white/10 text-white/60"
-                          }`}
-                        >
-                          {video.isPublished ? "Published" : "Draft"}
-                        </span>
-                      </div>
+        <div className="grid grid-cols-3 gap-2 border-t border-white/10 px-4 py-3">
+          <button
+            onClick={() => handleEdit(video)}
+            className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-semibold text-white"
+          >
+            Edit
+          </button>
 
-                      <p className="mt-3 line-clamp-2 text-[15px] font-semibold leading-[1.35] text-white">
-                        {video.title}
-                      </p>
+          <button
+            onClick={() => handleTogglePublish(video)}
+            className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-semibold text-white"
+          >
+            {video.isPublished ? "Draft" : "Publish"}
+          </button>
 
-                      <p className="mt-2 text-sm text-white/45">
-                        {video.speaker}
-                      </p>
-
-                      <p className="mt-2 text-xs text-white/35">
-                        Sort Order: {video.sortOrder}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-2 border-t border-white/10 px-4 py-3">
-                    <button
-                      onClick={() => handleEdit(video)}
-                      className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-semibold text-white"
-                    >
-                      Edit
-                    </button>
-
-                    <button
-                      onClick={() => handleTogglePublish(video)}
-                      className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-semibold text-white"
-                    >
-                      {video.isPublished ? "Draft" : "Publish"}
-                    </button>
-
-                    <button
-                      onClick={() => handleSoftDelete(video.id)}
-                      className="rounded-xl border border-red-500/20 bg-red-950/30 px-3 py-2 text-xs font-semibold text-red-200"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+          <button
+            onClick={() => handleSoftDelete(video.id)}
+            className="rounded-xl border border-red-500/20 bg-red-950/30 px-3 py-2 text-xs font-semibold text-red-200"
+          >
+            Delete
+          </button>
+        </div>
+      </div>
+    ))}
+  </div>
+)}
         </div>
       </main>
     </AdminGuard>

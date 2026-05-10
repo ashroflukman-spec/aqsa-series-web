@@ -42,7 +42,9 @@ type VideoItem = {
   youtubeId: string;
   description?: string;
   thumbnailUrl?: string;
-  sortOrder: number;
+  sortOrder?: number;
+  isPinned?: boolean;
+  createdAt?: any;
   isPublished: boolean;
   isDeleted?: boolean;
 };
@@ -171,19 +173,21 @@ export default function Page() {
               docItem.data().youtubeId ?? extractYouTubeId(rawYoutubeUrl);
 
             return {
-              id: docItem.id,
-              title: docItem.data().title ?? "",
-              speaker: docItem.data().speaker ?? "",
-              category: docItem.data().category ?? "Umum",
-              youtubeUrl: rawYoutubeUrl,
-              youtubeId: rawYoutubeId,
-              description: docItem.data().description ?? "",
-              thumbnailUrl:
-                docItem.data().thumbnailUrl ?? getYouTubeThumbnail(rawYoutubeId),
-              sortOrder: docItem.data().sortOrder ?? 0,
-              isPublished: docItem.data().isPublished ?? false,
-              isDeleted: docItem.data().isDeleted ?? false,
-            };
+  id: docItem.id,
+  title: docItem.data().title ?? "",
+  speaker: docItem.data().speaker ?? "",
+  category: docItem.data().category ?? "Umum",
+  youtubeUrl: rawYoutubeUrl,
+  youtubeId: rawYoutubeId,
+  description: docItem.data().description ?? "",
+  thumbnailUrl:
+    docItem.data().thumbnailUrl ?? getYouTubeThumbnail(rawYoutubeId),
+  sortOrder: docItem.data().sortOrder ?? 0,
+  isPinned: docItem.data().isPinned ?? false,
+  createdAt: docItem.data().createdAt ?? null,
+  isPublished: docItem.data().isPublished ?? false,
+  isDeleted: docItem.data().isDeleted ?? false,
+};
           })
           .filter((item) => item.isPublished === true && item.isDeleted !== true);
 
@@ -224,7 +228,20 @@ export default function Page() {
     });
   }, [series, speakerMap, normalized]);
 
-  const highlightVideos = useMemo(() => videos.slice(0, 5), [videos]);
+  const highlightVideos = useMemo(() => {
+  return [...videos]
+    .sort((a, b) => {
+      if (!!a.isPinned !== !!b.isPinned) {
+        return a.isPinned ? -1 : 1;
+      }
+
+      const aTime = a.createdAt?.seconds ?? 0;
+      const bTime = b.createdAt?.seconds ?? 0;
+
+      return bTime - aTime;
+    })
+    .slice(0, 5);
+}, [videos]);
 
   function getSpeakerName(speakerId: string) {
     return speakerMap[speakerId] || speakerId || "Speaker tidak diketahui";
@@ -491,11 +508,11 @@ export default function Page() {
               </div>
 
               <button
-                onClick={() => router.push("/videos")}
-                className="text-xs text-white/45 transition hover:text-white"
-              >
-                Lihat Semua →
-              </button>
+  onClick={() => router.push("/videos")}
+  className="text-xs text-white/45 transition hover:text-white"
+>
+  Lihat Semua →
+</button>
             </div>
 
             <div className="-mx-6 overflow-x-auto px-6 pb-2 video-highlight-scroll">
@@ -507,7 +524,7 @@ export default function Page() {
                 {highlightVideos.map((video) => (
                   <div
                     key={video.id}
-                    onClick={() => router.push("/videos")}
+                    onClick={() => router.push(`/videos?video=${video.id}`)}
                     className="group w-[86%] shrink-0 snap-start cursor-pointer overflow-hidden rounded-[26px] border border-white/10 bg-white/[0.04] shadow-[0_14px_40px_rgba(0,0,0,0.22)] backdrop-blur-xl transition duration-300 hover:-translate-y-1 hover:border-white/15 hover:bg-white/[0.06] hover:shadow-[0_20px_54px_rgba(0,0,0,0.3)]"
                   >
                     <div className="relative h-48">
