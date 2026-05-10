@@ -1,6 +1,8 @@
 import { ImageResponse } from "next/og";
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "../../../../lib/firebase";
 
-export const runtime = "edge";
+export const runtime = "nodejs";
 
 export const alt = "Aqsa Series";
 export const size = {
@@ -25,37 +27,25 @@ type VideoData = {
   shareCaption?: string;
 };
 
-function getStringField(fields: any, key: string) {
-  return fields?.[key]?.stringValue || "";
-}
-
 async function getVideo(id: string): Promise<VideoData | null> {
   try {
-    const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
-    const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
+    const ref = doc(db, "videos", id);
+    const snap = await getDoc(ref);
 
-    if (!projectId || !apiKey) return null;
+    if (!snap.exists()) return null;
 
-    const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/videos/${id}?key=${apiKey}`;
-
-    const res = await fetch(url, {
-      next: { revalidate: 60 },
-    });
-
-    if (!res.ok) return null;
-
-    const data = await res.json();
-    const fields = data.fields;
+    const data = snap.data();
 
     return {
-      title: getStringField(fields, "title"),
-      speaker: getStringField(fields, "speaker"),
-      category: getStringField(fields, "category"),
-      thumbnailUrl: getStringField(fields, "thumbnailUrl"),
-      youtubeId: getStringField(fields, "youtubeId"),
-      shareCaption: getStringField(fields, "shareCaption"),
+      title: data.title ?? "",
+      speaker: data.speaker ?? "",
+      category: data.category ?? "Wacana",
+      thumbnailUrl: data.thumbnailUrl ?? "",
+      youtubeId: data.youtubeId ?? "",
+      shareCaption: data.shareCaption ?? "",
     };
-  } catch {
+  } catch (error) {
+    console.error("Failed to fetch OG video:", error);
     return null;
   }
 }
