@@ -82,7 +82,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   );
 
   const url = `https://www.aqsaseries.com/a/${episodeId}`;
-  const image = `https://www.aqsaseries.com/a/${episodeId}/opengraph-image`;
+const image = `https://www.aqsaseries.com/a/${episodeId}/og.png`;
 
   return {
     title: `${title} | Aqsa Series`,
