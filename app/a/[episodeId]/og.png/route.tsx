@@ -270,19 +270,24 @@ export async function GET(
                 flexDirection: "column",
               }}
             >
-              <div>
-                <span
-                  style={{
-                    color: "#C49B2E",
-                    fontSize: "34px",
-                    fontWeight: 700,
-                    marginRight: "14px",
-                  }}
-                >
-                  “
-                </span>
-                {quote}
-              </div>
+              <div
+  style={{
+    display: "flex",
+    alignItems: "flex-start",
+  }}
+>
+  <span
+    style={{
+      color: "#C49B2E",
+      fontSize: "34px",
+      fontWeight: 700,
+      marginRight: "14px",
+    }}
+  >
+    “
+  </span>
+  <span>{quote}</span>
+</div>
 
               <div
                 style={{
@@ -313,20 +318,23 @@ export async function GET(
               </div>
 
               <div
-                style={{
-                  background: "#971A34",
-                  color: "white",
-                  borderRadius: "12px",
-                  padding: "16px 28px",
-                  fontSize: "22px",
-                  textAlign: "center",
-                  lineHeight: 1.15,
-                }}
-              >
-                Dengar di
-                <br />
-                aqsaseries.com
-              </div>
+  style={{
+    background: "#971A34",
+    color: "white",
+    borderRadius: "12px",
+    padding: "16px 28px",
+    fontSize: "22px",
+    textAlign: "center",
+    lineHeight: 1.15,
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+  }}
+>
+  <span>Dengar di</span>
+  <span>aqsaseries.com</span>
+</div>
             </div>
           </div>
         </div>
