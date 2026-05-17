@@ -93,13 +93,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       url,
       siteName: "Aqsa Series",
       images: [
-        {
-          url: image,
-          width: 1200,
-          height: 630,
-          alt: title,
-        },
-      ],
+  {
+    url: image,
+    width: 1200,
+    height: 630,
+    alt: title,
+    type: "image/png",
+  },
+],
       type: "website",
     },
     twitter: {
