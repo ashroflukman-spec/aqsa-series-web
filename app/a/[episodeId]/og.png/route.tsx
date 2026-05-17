@@ -1,5 +1,7 @@
 import { ImageResponse } from "next/og";
 import { doc, getDoc } from "firebase/firestore";
+import { readFile } from "node:fs/promises";
+import path from "node:path";
 import { db } from "../../../../lib/firebase";
 
 type Props = {
@@ -87,25 +89,39 @@ async function getSpeakerName(episode: EpisodeData | null) {
   }
 }
 
-export async function GET(
-  request: Request,
-  { params }: Props
-) {
+
+async function getPublicImageDataUrl(filename: string, mime = "image/png") {
+  try {
+    const filePath = path.join(process.cwd(), "public", filename);
+    const fileBuffer = await readFile(filePath);
+    const base64 = fileBuffer.toString("base64");
+
+    return `data:${mime};base64,${base64}`;
+  } catch {
+    return "";
+  }
+}
+
+export async function GET(request: Request, { params }: Props) {
   const { episodeId } = await params;
 
   const episode = await getEpisode(episodeId);
   const series = await getSeries(episode?.seriesId);
   const speakerName = await getSpeakerName(episode);
 
-  const title = episode?.shareTitle || episode?.title || "Episod Aqsa Series";
-  const seriesTitle = series?.title || "Aqsa Series";
+  const title = truncate(
+    episode?.shareTitle || episode?.title || "Episod Aqsa Series",
+    54
+  );
+
+  const seriesTitle = truncate(series?.title || "Aqsa Series", 34);
 
   const quote = truncate(
     episode?.shareNote ||
       episode?.shareDescription ||
       episode?.description ||
       "Dengar episod ini di Aqsa Series.",
-    120
+    82
   );
 
   const cover =
@@ -113,6 +129,8 @@ export async function GET(
     episode?.coverUrl ||
     episode?.imageUrl ||
     "https://www.aqsaseries.com/Icon-2-Aqsa-Series.png";
+
+   const logoSrc = await getPublicImageDataUrl("logo-icon.png");
 
   return new ImageResponse(
     (
@@ -138,6 +156,7 @@ export async function GET(
             background: "#F5EEDF",
           }}
         >
+          {/* LEFT IMAGE PANEL */}
           <div
             style={{
               width: "520px",
@@ -162,38 +181,55 @@ export async function GET(
               style={{
                 position: "absolute",
                 inset: 0,
+                display: "flex",
                 background:
                   "linear-gradient(180deg, rgba(0,0,0,0.05), rgba(0,0,0,0.42))",
               }}
             />
 
             <div
-              style={{
-                position: "absolute",
-                top: "38px",
-                left: "38px",
-                width: "210px",
-                height: "72px",
-                borderRadius: "18px",
-                background: "rgba(0,0,0,0.55)",
-                border: "1px solid rgba(212,175,55,0.55)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                padding: "14px",
-              }}
-            >
-              <img
-                src="https://www.aqsaseries.com/logo-icon.png"
-                alt="Aqsa Series"
-                style={{
-                  width: "160px",
-                  height: "auto",
-                  objectFit: "contain",
-                }}
-              />
-            </div>
-
+  style={{
+    position: "absolute",
+    top: "38px",
+    left: "38px",
+    width: "210px",
+    height: "72px",
+    borderRadius: "18px",
+    background: "rgba(0,0,0,0.62)",
+    border: "1px solid rgba(212,175,55,0.55)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: "14px",
+  }}
+>
+  {logoSrc ? (
+  <img
+    src={logoSrc}
+    alt="Aqsa Series"
+    width={160}
+    height={54}
+    style={{
+      width: "160px",
+      height: "54px",
+      objectFit: "contain",
+      display: "flex",
+    }}
+  />
+) : (
+  <div
+    style={{
+      color: "#ffffff",
+      fontSize: "24px",
+      fontWeight: 800,
+      letterSpacing: "2px",
+      display: "flex",
+    }}
+  >
+    AQSA SERIES
+  </div>
+)}
+</div>
             <div
               style={{
                 position: "absolute",
@@ -206,97 +242,103 @@ export async function GET(
                 fontSize: "18px",
                 letterSpacing: "8px",
                 fontWeight: 700,
+                display: "flex",
               }}
             >
               AUDIO
             </div>
           </div>
 
+          {/* RIGHT CONTENT PANEL */}
           <div
             style={{
               width: "608px",
               height: "558px",
               display: "flex",
               flexDirection: "column",
-              padding: "48px 54px",
+              padding: "34px 40px",
               color: "#262626",
             }}
           >
             <div
               style={{
-                fontSize: "24px",
-                letterSpacing: "8px",
+                fontSize: "18px",
+                letterSpacing: "4px",
                 color: "#9A1C35",
                 textTransform: "uppercase",
                 lineHeight: 1.35,
-                fontWeight: 600,
+                fontWeight: 700,
+                display: "flex",
               }}
             >
-              {truncate(seriesTitle, 46)}
+              {seriesTitle}
             </div>
 
             <div
               style={{
-                marginTop: "22px",
-                fontSize: "46px",
-                lineHeight: 1.08,
-                fontWeight: 500,
+                marginTop: "18px",
+                fontSize: "34px",
+                lineHeight: 1.12,
+                fontWeight: 700,
                 color: "#1F1F1F",
+                display: "flex",
               }}
             >
-              {truncate(title, 72)}
+              {title}
             </div>
 
             <div
               style={{
-                marginTop: "18px",
-                fontSize: "24px",
+                marginTop: "12px",
+                fontSize: "18px",
                 color: "#9A1C35",
+                display: "flex",
               }}
             >
-              {speakerName}
+              {truncate(speakerName, 32)}
             </div>
 
             <div
               style={{
-                marginTop: "18px",
+                marginTop: "16px",
                 border: "1px solid rgba(212,175,55,0.55)",
-                borderRadius: "22px",
-                padding: "24px 30px",
-                fontSize: "30px",
-                lineHeight: 1.35,
+                borderRadius: "18px",
+                padding: "18px 22px",
+                fontSize: "19px",
+                lineHeight: 1.45,
                 color: "#3A3328",
                 display: "flex",
                 flexDirection: "column",
               }}
             >
               <div
-  style={{
-    display: "flex",
-    alignItems: "flex-start",
-  }}
->
-  <span
-    style={{
-      color: "#C49B2E",
-      fontSize: "34px",
-      fontWeight: 700,
-      marginRight: "14px",
-    }}
-  >
-    “
-  </span>
-  <span>{quote}</span>
-</div>
+                style={{
+                  display: "flex",
+                  alignItems: "flex-start",
+                }}
+              >
+                <span
+                  style={{
+                    color: "#C49B2E",
+                    fontSize: "28px",
+                    fontWeight: 700,
+                    marginRight: "12px",
+                    lineHeight: 1,
+                  }}
+                >
+                  “
+                </span>
+                <span>{quote}</span>
+              </div>
 
               <div
                 style={{
-                  marginTop: "18px",
+                  marginTop: "14px",
                   display: "flex",
                   justifyContent: "flex-end",
                   color: "#9A1C35",
-                  fontSize: "24px",
-                  letterSpacing: "4px",
+                  fontSize: "18px",
+                  letterSpacing: "3px",
                 }}
               >
                 — Al-Maqdisiy
@@ -309,32 +351,40 @@ export async function GET(
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
-                fontSize: "22px",
+                fontSize: "18px",
                 color: "#333",
+                gap: "20px",
               }}
             >
-              <div style={{ maxWidth: "310px", lineHeight: 1.25 }}>
+              <div
+                style={{
+                  maxWidth: "310px",
+                  lineHeight: 1.28,
+                  display: "flex",
+                }}
+              >
                 Siri Pengetahuan Baitulmaqdis kita bermula di sini.
               </div>
 
               <div
-  style={{
-    background: "#971A34",
-    color: "white",
-    borderRadius: "12px",
-    padding: "16px 28px",
-    fontSize: "22px",
-    textAlign: "center",
-    lineHeight: 1.15,
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    justifyContent: "center",
-  }}
->
-  <span>Dengar di</span>
-  <span>aqsaseries.com</span>
-</div>
+                style={{
+                  background: "#971A34",
+                  color: "white",
+                  borderRadius: "12px",
+                  padding: "12px 20px",
+                  fontSize: "18px",
+                  textAlign: "center",
+                  lineHeight: 1.18,
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  minWidth: "150px",
+                }}
+              >
+                <span>Dengar di</span>
+                <span>aqsaseries.com</span>
+              </div>
             </div>
           </div>
         </div>
