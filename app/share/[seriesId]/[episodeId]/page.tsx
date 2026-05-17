@@ -8,6 +8,7 @@ type Props = {
     seriesId: string;
     episodeId: string;
   }>;
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
 };
 
 type EpisodeData = {
@@ -54,7 +55,10 @@ async function getSeries(seriesId: string): Promise<SeriesData | null> {
   }
 }
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+  searchParams,
+}: Props): Promise<Metadata> {
   const { seriesId, episodeId } = await params;
 
   const episode = await getEpisode(episodeId);
@@ -76,9 +80,22 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     160
   );
 
-  const url = `https://www.aqsaseries.com/share/${seriesId}/${episodeId}`;
-  const image = `${url}/opengraph-image`;
+  const query = await searchParams;
 
+const wa =
+  typeof query?.wa === "string"
+    ? query.wa
+    : typeof query?.preview === "string"
+      ? query.preview
+      : typeof query?.audioShare === "string"
+        ? query.audioShare
+        : "";
+
+const cacheQuery = wa ? `?wa=${encodeURIComponent(wa)}` : "";
+
+const baseUrl = `https://www.aqsaseries.com/share/${seriesId}/${episodeId}`;
+const url = `${baseUrl}${cacheQuery}`;
+const image = `${baseUrl}/opengraph-image${cacheQuery}`;
   return {
     title,
     description,
