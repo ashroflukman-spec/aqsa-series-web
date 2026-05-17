@@ -95,7 +95,7 @@ const cacheQuery = wa ? `?wa=${encodeURIComponent(wa)}` : "";
 
 const baseUrl = `https://www.aqsaseries.com/share/${seriesId}/${episodeId}`;
 const url = `${baseUrl}${cacheQuery}`;
-const image = `${baseUrl}/opengraph-image${cacheQuery}`;
+const image = `${baseUrl}/opengraph-image`;
   return {
     title,
     description,
