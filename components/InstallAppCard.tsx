@@ -26,12 +26,12 @@ const COPY = {
     safari: "Safari",
     chrome: "Chrome",
     otherBrowser: "Pelayar ini",
-    iosOther: "Jika pilihan ini tiada dalam pelayar anda, buka pautan ini di Safari:",
-    iosSteps: ["Dalam Safari, tekan Kongsi (atau menu halaman → Kongsi).", "Pilih Tambah ke Skrin Utama.", "Tekan Tambah. Pilih Buka sebagai Aplikasi Web jika pilihan itu muncul."],
-    iosChromeSteps: ["Dalam Chrome, tekan ikon Kongsi di sebelah kanan bar alamat.", "Pilih Tambah ke Skrin Utama.", "Semak nama, kemudian tekan Tambah."],
-    iosOtherSteps: ["Tekan Kongsi dalam pelayar ini.", "Jika ada, pilih Tambah ke Skrin Utama, kemudian Tambah."],
-    androidSteps: ["Buka laman ini dalam Chrome dan tekan menu ⋮.", "Pilih Pasang aplikasi atau Tambah ke skrin utama.", "Sahkan Pasang atau Tambah."],
-    desktopSteps: ["Buka menu pelayar atau ikon pemasangan di bar alamat.", "Pilih Pasang Aqsa Series dan sahkan."],
+    iosOther: "Jika pilihan ini tiada dalam pelayar anda, buka pautan ini di **Safari**:",
+    iosSteps: ["Dalam **Safari**, tekan **Share** (atau **Page Menu** → **Share**).", "Pilih **Add to Home Screen**.", "Aktifkan **Open as Web App** jika tersedia, kemudian tekan **Add**."],
+    iosChromeSteps: ["Dalam **Chrome**, tekan **Share** di sebelah kanan bar alamat.", "Pilih **Add to Home Screen**.", "Semak nama, kemudian tekan **Add**."],
+    iosOtherSteps: ["Tekan **Share** dalam pelayar ini.", "Jika ada, pilih **Add to Home Screen**, kemudian **Add**."],
+    androidSteps: ["Buka laman ini dalam **Chrome** dan tekan **More** (⋮).", "Pilih **Install app** atau **Install and create shortcut** → **Create shortcut**.", "Sahkan **Install** atau **Add**."],
+    desktopSteps: ["Buka menu pelayar atau ikon **Install** di bar alamat.", "Pilih **Install Aqsa Series** dan sahkan."],
     copied: "Pautan disalin",
     copy: "Salin pautan",
   },
@@ -48,12 +48,12 @@ const COPY = {
     safari: "Safari",
     chrome: "Chrome",
     otherBrowser: "This browser",
-    iosOther: "If this option is missing in your browser, open this link in Safari:",
-    iosSteps: ["In Safari, tap Share (or Page Menu → Share).", "Choose Add to Home Screen.", "Tap Add. Select Open as Web App if it appears."],
-    iosChromeSteps: ["In Chrome, tap Share to the right of the address bar.", "Choose Add to Home Screen.", "Check the name, then tap Add."],
-    iosOtherSteps: ["Tap Share in this browser.", "If available, choose Add to Home Screen, then Add."],
-    androidSteps: ["Open this site in Chrome and tap the ⋮ menu.", "Choose Install app or Add to Home screen.", "Confirm Install or Add."],
-    desktopSteps: ["Open the browser menu or the install icon in the address bar.", "Choose Install Aqsa Series and confirm."],
+    iosOther: "If this option is missing in your browser, open this link in **Safari**:",
+    iosSteps: ["In **Safari**, tap **Share** (or **Page Menu** → **Share**).", "Choose **Add to Home Screen**.", "Turn on **Open as Web App** if available, then tap **Add**."],
+    iosChromeSteps: ["In **Chrome**, tap **Share** to the right of the address bar.", "Choose **Add to Home Screen**.", "Check the name, then tap **Add**."],
+    iosOtherSteps: ["Tap **Share** in this browser.", "If available, choose **Add to Home Screen**, then **Add**."],
+    androidSteps: ["Open this site in **Chrome** and tap **More** (⋮).", "Choose **Install app** or **Install and create shortcut** → **Create shortcut**.", "Confirm **Install** or **Add**."],
+    desktopSteps: ["Open the browser menu or the **Install** icon in the address bar.", "Choose **Install Aqsa Series** and confirm."],
     copied: "Link copied",
     copy: "Copy link",
   },
@@ -70,16 +70,24 @@ const COPY = {
     safari: "Safari",
     chrome: "Chrome",
     otherBrowser: "هذا المتصفح",
-    iosOther: "إذا لم يظهر هذا الخيار في متصفحك، فافتح الرابط في Safari:",
-    iosSteps: ["في Safari، اضغط مشاركة (أو قائمة الصفحة ← مشاركة).", "اختر إضافة إلى الشاشة الرئيسية.", "اضغط إضافة. اختر فتح كتطبيق ويب إذا ظهر الخيار."],
-    iosChromeSteps: ["في Chrome، اضغط رمز المشاركة بجوار شريط العنوان.", "اختر إضافة إلى الشاشة الرئيسية.", "راجع الاسم، ثم اضغط إضافة."],
-    iosOtherSteps: ["اضغط مشاركة في هذا المتصفح.", "إن ظهر الخيار، اختر إضافة إلى الشاشة الرئيسية ثم إضافة."],
-    androidSteps: ["افتح الموقع في Chrome واضغط القائمة ⋮.", "اختر تثبيت التطبيق أو إضافة إلى الشاشة الرئيسية.", "أكد التثبيت أو الإضافة."],
-    desktopSteps: ["افتح قائمة المتصفح أو رمز التثبيت في شريط العنوان.", "اختر تثبيت Aqsa Series ثم أكد."],
+    iosOther: "إذا لم يظهر هذا الخيار في متصفحك، فافتح الرابط في **Safari**:",
+    iosSteps: ["في **Safari**، اضغط **Share** (أو **Page Menu**، ثم **Share**).", "اختر **Add to Home Screen**.", "فعّل **Open as Web App** إن ظهر، ثم اضغط **Add**."],
+    iosChromeSteps: ["في **Chrome**، اضغط **Share** بجوار شريط العنوان.", "اختر **Add to Home Screen**.", "راجع الاسم، ثم اضغط **Add**."],
+    iosOtherSteps: ["اضغط **Share** في هذا المتصفح.", "إن ظهر الخيار، اختر **Add to Home Screen** ثم **Add**."],
+    androidSteps: ["افتح الموقع في **Chrome** واضغط **More** (⋮).", "اختر **Install app** أو **Install and create shortcut** ثم **Create shortcut**.", "أكد **Install** أو **Add**."],
+    desktopSteps: ["افتح قائمة المتصفح أو رمز **Install** في شريط العنوان.", "اختر **Install Aqsa Series** ثم أكد."],
     copied: "تم نسخ الرابط",
     copy: "نسخ الرابط",
   },
 } as const;
+
+function renderGuideText(value: string) {
+  return value.split(/(\*\*[^*]+\*\*)/g).map((part, index) =>
+    part.startsWith("**") && part.endsWith("**")
+      ? <bdi key={index} dir="ltr"><strong className="font-bold text-[#E8D28A]">{part.slice(2, -2)}</strong></bdi>
+      : part
+  );
+}
 
 export default function InstallAppCard({ surface }: { surface: "home" | "settings" }) {
   const { language } = useLanguage();
@@ -189,7 +197,7 @@ export default function InstallAppCard({ surface }: { surface: "home" | "setting
             {isIos && (
               <div className={`mt-5 grid gap-2 ${platform === "ios-other" ? "grid-cols-3" : "grid-cols-2"}`} role="group" aria-label={copy.browser}>
                 {(["safari", "chrome"] as const).map((browser) => (
-                  <button key={browser} type="button" onClick={() => setIosGuideBrowser(browser)} aria-pressed={selectedBrowser === browser} className={`min-h-11 rounded-xl border px-3 py-2 text-sm font-semibold transition ${selectedBrowser === browser ? "border-[#D4AF37]/60 bg-[#7A1F2B] text-white" : "border-white/15 bg-white/5 text-white/70"}`}>
+                  <button key={browser} type="button" dir="ltr" onClick={() => setIosGuideBrowser(browser)} aria-pressed={selectedBrowser === browser} className={`min-h-11 rounded-xl border px-3 py-2 text-sm font-bold transition ${selectedBrowser === browser ? "border-[#D4AF37]/60 bg-[#7A1F2B] text-white" : "border-white/15 bg-white/5 text-white/70"}`}>
                     {browser === "safari" ? copy.safari : copy.chrome}
                   </button>
                 ))}
@@ -205,13 +213,13 @@ export default function InstallAppCard({ surface }: { surface: "home" | "setting
               {steps.map((step, index) => (
                 <li key={step} className="flex items-start gap-3 text-sm leading-6 text-white/85">
                   <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#7A1F2B] text-xs font-bold text-white">{index + 1}</span>
-                  <span>{step}</span>
+                  <span>{renderGuideText(step)}</span>
                 </li>
               ))}
             </ol>
             {isIos && selectedBrowser === "other" && (
               <div className="mt-5 rounded-xl border border-[#D4AF37]/20 bg-[#D4AF37]/10 p-3 text-sm">
-                <p>{copy.iosOther}</p>
+                <p>{renderGuideText(copy.iosOther)}</p>
                 <p className="mt-1 break-all font-medium text-[#E8D28A]" dir="ltr">{SITE_URL}</p>
                 <button type="button" onClick={copyLink} className="mt-3 rounded-lg border border-[#D4AF37]/35 px-3 py-2 text-xs font-semibold text-[#E8D28A]">{copied ? copy.copied : copy.copy}</button>
               </div>
