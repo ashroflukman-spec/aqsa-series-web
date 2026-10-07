@@ -5,6 +5,9 @@ import { AuthProvider } from "../components/AuthProvider";
 import MiniPlayer from "../components/MiniPlayer";
 import BottomNav from "../components/BottomNav";
 import PWARegister from "../components/PWARegister";
+import { LanguageProvider } from "../components/LanguageProvider";
+import type { AppLanguage } from "../components/LanguageProvider";
+import { cookies } from "next/headers";
 
 export const metadata: Metadata = {
   title: "Aqsa Series",
@@ -28,22 +31,26 @@ export const viewport: Viewport = {
   themeColor: "#0f1115",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const savedLanguage = (await cookies()).get("aqsa-language")?.value;
+  const language: AppLanguage | null = savedLanguage === "ms" || savedLanguage === "en" || savedLanguage === "ar" ? savedLanguage : null;
   return (
-    <html lang="ms">
+    <html lang={language || "ms"} dir={language === "ar" ? "rtl" : "ltr"}>
       <body className="bg-gradient-to-b from-[#0f1115] to-[#1a1d24]">
-        <AuthProvider>
-          <AudioProvider>
-            <PWARegister />
-            {children}
-            <MiniPlayer />
-            <BottomNav />
-          </AudioProvider>
-        </AuthProvider>
+        <LanguageProvider initialLanguage={language}>
+          <AuthProvider>
+            <AudioProvider>
+              <PWARegister />
+              {children}
+              <MiniPlayer />
+              <BottomNav />
+            </AudioProvider>
+          </AuthProvider>
+        </LanguageProvider>
       </body>
     </html>
   );

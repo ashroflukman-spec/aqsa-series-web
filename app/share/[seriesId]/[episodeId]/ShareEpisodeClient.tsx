@@ -1,12 +1,20 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { collection, doc, getDoc, getDocs } from "firebase/firestore";
 import { Play, Pause, SkipBack, SkipForward } from "lucide-react";
 import { db } from "../../../../lib/firebase";
 import { useAudio } from "../../../../components/AudioProvider";
 import ShareEpisodeButton from "../../../../components/ShareEpisodeButton";
+import { useLanguage } from "../../../../components/LanguageProvider";
+import { localizeContent, type TranslatableContent } from "../../../../lib/localizedContent";
+
+const COPY = {
+  ms: { missingEpisode: "Episod tidak dijumpai", missingSeries: "Siri tidak dijumpai", failed: "Gagal memuatkan episod", loading: "Memuatkan episod...", open: "Buka dalam pemain", shared: "Dikongsi dari Aqsa Series", speaker: "Penyampai", unknownSpeaker: "Penyampai tidak diketahui", previous: "Sebelum", next: "Seterusnya", play: "Main", pause: "Jeda", noAudio: "Audio belum dimuat naik.", share: "Perkongsian Episod", listen: "Dengar sekarang di Aqsa Series", fallback: "Dengar episod ini di Aqsa Series.", originalContent: "Huraian dalam bahasa asal" },
+  en: { missingEpisode: "Episode not found", missingSeries: "Series not found", failed: "Unable to load episode", loading: "Loading episode...", open: "Open in player", shared: "Shared from Aqsa Series", speaker: "Speaker", unknownSpeaker: "Unknown speaker", previous: "Previous", next: "Next", play: "Play", pause: "Pause", noAudio: "Audio has not been uploaded.", share: "Episode Share", listen: "Listen now on Aqsa Series", fallback: "Listen to this episode on Aqsa Series.", originalContent: "Description shown in its original language" },
+  ar: { missingEpisode: "لم يُعثر على الحلقة", missingSeries: "لم يُعثر على السلسلة", failed: "تعذّر تحميل الحلقة", loading: "جارٍ تحميل الحلقة...", open: "افتح في المشغل", shared: "مشاركة من Aqsa Series", speaker: "المتحدث", unknownSpeaker: "متحدث غير معروف", previous: "السابق", next: "التالي", play: "تشغيل", pause: "إيقاف مؤقت", noAudio: "لم يُرفع الملف الصوتي بعد.", share: "مشاركة الحلقة", listen: "استمع الآن على Aqsa Series", fallback: "استمع إلى هذه الحلقة على Aqsa Series.", originalContent: "يُعرض الوصف بلغته الأصلية" },
+} as const;
 
 type EpisodeData = {
   id: string;
@@ -30,6 +38,7 @@ type EpisodeData = {
   shareCtaText?: string;
   shareImageUrl?: string;
   shareStatus?: "draft" | "ready";
+  translations?: TranslatableContent["translations"];
 };
 
 type SeriesData = {
@@ -38,6 +47,7 @@ type SeriesData = {
   coverUrl?: string;
   description?: string;
   isDeleted?: boolean;
+  translations?: TranslatableContent["translations"];
 };
 
 type SpeakerItem = {
@@ -60,6 +70,8 @@ function formatTime(seconds = 0) {
 export default function ShareEpisodePage() {
   const params = useParams();
   const router = useRouter();
+  const { language } = useLanguage();
+  const copy = COPY[language];
 
   const {
     activeEpisode,
@@ -81,6 +93,10 @@ export default function ShareEpisodePage() {
 
   const episodeId = String(params.episodeId || "");
   const seriesId = String(params.seriesId || "");
+  const isCurrentEpisode = activeEpisode?.seriesId === seriesId && activeEpisode.episodeId === episodeId;
+  const pageIsPlaying = isCurrentEpisode && isPlaying;
+  const pageCurrentTime = isCurrentEpisode ? currentTime : 0;
+  const pageDuration = isCurrentEpisode ? duration : episode?.durationSeconds || 0;
 
   useEffect(() => {
     async function fetchData() {
@@ -89,14 +105,14 @@ export default function ShareEpisodePage() {
         const episodeSnap = await getDoc(episodeRef);
 
         if (!episodeSnap.exists()) {
-          setError("Episod tidak dijumpai");
+          setError("missingEpisode");
           return;
         }
 
         const episodeData = episodeSnap.data();
 
         if (episodeData.seriesId !== seriesId || episodeData.isDeleted === true) {
-          setError("Episod tidak dijumpai");
+          setError("missingEpisode");
           return;
         }
 
@@ -122,6 +138,7 @@ export default function ShareEpisodePage() {
           shareCtaText: episodeData.shareCtaText ?? "",
           shareImageUrl: episodeData.shareImageUrl ?? "",
           shareStatus: episodeData.shareStatus ?? "draft",
+          translations: episodeData.translations ?? undefined,
         };
 
         setEpisode(currentEpisode);
@@ -133,7 +150,7 @@ export default function ShareEpisodePage() {
           const seriesData = seriesSnap.data();
 
           if (seriesData.isDeleted === true) {
-            setError("Series tidak dijumpai");
+            setError("missingSeries");
             return;
           }
 
@@ -143,6 +160,7 @@ export default function ShareEpisodePage() {
             coverUrl: seriesData.coverUrl ?? "",
             description: seriesData.description ?? "",
             isDeleted: seriesData.isDeleted ?? false,
+            translations: seriesData.translations ?? undefined,
           });
         }
 
@@ -170,6 +188,7 @@ export default function ShareEpisodePage() {
     shareCtaText: docItem.data().shareCtaText ?? "",
     shareImageUrl: docItem.data().shareImageUrl ?? "",
     shareStatus: docItem.data().shareStatus ?? "draft",
+    translations: docItem.data().translations ?? undefined,
   }))
           .filter(
             (ep) =>
@@ -212,7 +231,7 @@ export default function ShareEpisodePage() {
 
         setSpeakerMap(nextSpeakerMap);
       } catch {
-        setError("Gagal memuatkan episod");
+        setError("failed");
       }
     }
 
@@ -221,30 +240,14 @@ export default function ShareEpisodePage() {
     }
   }, [episodeId, seriesId]);
 
-  useEffect(() => {
-  if (!episode || !series) return;
-  if (!episode.audioUrl) return;
-
-  if (!activeEpisode) {
-    syncEpisodeToProvider(episode);
-    return;
-  }
-
-  const isSameEpisode =
-    activeEpisode.seriesId === (episode.seriesId || seriesId) &&
-    activeEpisode.episodeId === episode.id;
-
-  if (!isSameEpisode) return;
-}, [episode, series, activeEpisode, seriesId]);
-
-  function getSpeakerName(speakerId?: string, fallbackName?: string) {
+  const getSpeakerName = useCallback((speakerId?: string, fallbackName?: string) => {
     if (speakerId && speakerMap[speakerId]) return speakerMap[speakerId];
     if (fallbackName && fallbackName.trim() !== "") return fallbackName;
     if (speakerId) return speakerId;
-    return "Penyampai tidak diketahui";
-  }
+    return copy.unknownSpeaker;
+  }, [speakerMap, copy.unknownSpeaker]);
 
-  function buildQueue() {
+  const buildQueue = useCallback(() => {
     return seriesEpisodes.map((ep) => ({
       seriesId: ep.seriesId || seriesId,
       episodeId: ep.id,
@@ -254,9 +257,9 @@ export default function ShareEpisodePage() {
       coverUrl: series?.coverUrl || ep.coverUrl || ep.imageUrl || "",
       speakerName: getSpeakerName(ep.speakerId, ep.speakerName),
     }));
-  }
+  }, [seriesEpisodes, series, seriesId, getSpeakerName]);
 
-  async function syncEpisodeToProvider(targetEpisode: EpisodeData) {
+  const syncEpisodeToProvider = useCallback(async (targetEpisode: EpisodeData) => {
     const queue = buildQueue();
 
     const target = {
@@ -277,7 +280,7 @@ export default function ShareEpisodePage() {
     };
 
     await playEpisode(target, queue);
-  }
+  }, [buildQueue, series, seriesId, getSpeakerName, playEpisode]);
 
   const currentEpisodeIndex = seriesEpisodes.findIndex(
     (ep) => ep.id === episodeId
@@ -294,23 +297,31 @@ export default function ShareEpisodePage() {
 
   const handlePrevEpisode = async () => {
     if (!prevEpisode) return;
-    await playPrev();
+    if (isCurrentEpisode) await playPrev();
+    else await syncEpisodeToProvider(prevEpisode);
+    router.push(`/share/${seriesId}/${prevEpisode.id}`);
   };
 
   const handleNextEpisode = async () => {
     if (!nextEpisode) return;
-    await playNext();
+    if (isCurrentEpisode) await playNext();
+    else await syncEpisodeToProvider(nextEpisode);
+    router.push(`/share/${seriesId}/${nextEpisode.id}`);
   };
 
   const togglePlayPause = async () => {
     try {
-      await toggleCurrent();
+      if (isCurrentEpisode) {
+        await toggleCurrent();
+      } else if (episode) {
+        await syncEpisodeToProvider(episode);
+      }
     } catch (err) {
       console.error("Gagal play/pause:", err);
     }
   };
 
-  const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
+  const progressPercent = pageDuration > 0 ? (pageCurrentTime / pageDuration) * 100 : 0;
 
   const coverImage =
     episode?.shareImageUrl ||
@@ -319,14 +330,14 @@ export default function ShareEpisodePage() {
     episode?.imageUrl ||
     "https://images.unsplash.com/photo-1521295121783-8a321d551ad2?q=80&w=1200&auto=format&fit=crop";
 
-  const shareTitle = episode?.shareTitle || episode?.title || "Aqsa Series";
+  const localizedEpisode = episode ? localizeContent("episode", { ...episode, title: episode.title || "" }, language) : null;
+  const localizedSeries = series ? localizeContent("series", { ...series, id: series.id || "", title: series.title || "" }, language) : null;
+  const shareTitle = localizedEpisode?.title || "Aqsa Series";
   const shareDescription =
-    episode?.shareDescription ||
-    episode?.description ||
-    "Dengar episod ini di Aqsa Series.";
+    localizedEpisode?.description || copy.fallback;
 
-  const shareNote = episode?.shareNote || "";
-  const shareCtaText = episode?.shareCtaText || "Dengar sekarang di Aqsa Series";
+  const shareNote = language === "ms" ? episode?.shareNote || "" : "";
+  const shareCtaText = copy.listen;
 
   const shareUrl =
     typeof window !== "undefined"
@@ -336,7 +347,7 @@ export default function ShareEpisodePage() {
   if (error) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-[#0f1115] text-white">
-        <h1 className="text-xl">{error}</h1>
+        <h1 className="text-xl">{copy[error as keyof typeof copy] || copy.failed}</h1>
       </main>
     );
   }
@@ -344,7 +355,7 @@ export default function ShareEpisodePage() {
   if (!episode) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-[#0f1115] text-white">
-        <p>Memuatkan episod...</p>
+        <p>{copy.loading}</p>
       </main>
     );
   }
@@ -361,7 +372,7 @@ export default function ShareEpisodePage() {
           onClick={() => router.push(`/player/${seriesId}/${episodeId}`)}
           className="mb-6 text-sm text-gray-400 transition hover:text-white/80"
         >
-          ← Buka dalam Player
+          {language === "ar" ? "→" : "←"} {copy.open}
         </button>
 
         <div className="overflow-hidden rounded-[32px] border border-white/10 bg-[#171a20] shadow-[0_28px_90px_rgba(0,0,0,0.48)]">
@@ -376,14 +387,14 @@ export default function ShareEpisodePage() {
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.10),transparent_35%)]" />
 
             <div className="absolute right-4 top-4 rounded-full border border-white/15 bg-black/25 px-3 py-1 text-[11px] text-white/90 backdrop-blur-md">
-              Dikongsi dari Aqsa Series
+              {copy.shared}
             </div>
 
             <div className="absolute bottom-0 left-0 right-0 p-5">
               <div className="rounded-[26px] border border-white/10 bg-black/20 p-4 backdrop-blur-md">
                 {series?.title && (
                   <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/55">
-                    {series.title}
+                    {localizedSeries?.title}
                   </p>
                 )}
 
@@ -397,14 +408,14 @@ export default function ShareEpisodePage() {
           <div className="border-t border-white/6 bg-[#2f3238]/95 p-4 backdrop-blur-xl">
             <div className="mb-5">
               <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/45">
-                Penyampai
+                {copy.speaker}
               </p>
               <p className="mt-1 text-sm font-medium text-white/90">
                 {getSpeakerName(episode.speakerId, episode.speakerName)}
               </p>
             </div>
 
-            <div className="mb-2">
+            <div className="mb-2" dir="ltr">
               <div className="relative h-6">
                 <div className="absolute top-1/2 h-2 w-full -translate-y-1/2 rounded-full bg-white/15" />
 
@@ -416,12 +427,12 @@ export default function ShareEpisodePage() {
                 <input
                   type="range"
                   min={0}
-                  max={duration || 0}
+                  max={pageDuration || 0}
                   step={0.1}
-                  value={currentTime}
+                  value={pageCurrentTime}
                   onChange={(e) => seekAudio(Number(e.target.value))}
                   className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-                  disabled={!episode.audioUrl}
+                  disabled={!episode.audioUrl || !isCurrentEpisode}
                 />
 
                 <div
@@ -431,8 +442,8 @@ export default function ShareEpisodePage() {
               </div>
 
               <div className="mt-2 flex justify-between text-sm font-medium text-white/75">
-                <span>{formatTime(currentTime)}</span>
-                <span>{formatTime(duration)}</span>
+                <span>{formatTime(pageCurrentTime)}</span>
+                <span>{formatTime(pageDuration)}</span>
               </div>
             </div>
 
@@ -445,7 +456,7 @@ export default function ShareEpisodePage() {
               >
                 <span className="flex items-center justify-center gap-2">
                   <SkipBack size={18} />
-                  Prev
+                  {copy.previous}
                 </span>
               </button>
 
@@ -455,15 +466,15 @@ export default function ShareEpisodePage() {
                 disabled={!episode.audioUrl}
                 className="rounded-[22px] border border-white/12 bg-[#24272d] px-4 py-3 text-base font-semibold text-white/90 shadow-[0_10px_26px_rgba(0,0,0,0.14)] transition duration-300 hover:bg-[#2c3037] active:scale-[0.985] disabled:opacity-40"
               >
-                {isPlaying ? (
+                {pageIsPlaying ? (
                   <span className="flex items-center justify-center gap-2">
                     <Pause size={18} />
-                    Pause
+                    {copy.pause}
                   </span>
                 ) : (
                   <span className="flex items-center justify-center gap-2">
                     <Play size={18} />
-                    Play
+                    {copy.play}
                   </span>
                 )}
               </button>
@@ -475,7 +486,7 @@ export default function ShareEpisodePage() {
                 className="rounded-[22px] border border-white/12 bg-[#24272d] px-4 py-3 text-base font-semibold text-white/90 shadow-[0_10px_26px_rgba(0,0,0,0.14)] transition duration-300 hover:bg-[#2c3037] active:scale-[0.985] disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <span className="flex items-center justify-center gap-2">
-                  Next
+                  {copy.next}
                   <SkipForward size={18} />
                 </span>
               </button>
@@ -490,7 +501,7 @@ export default function ShareEpisodePage() {
             </div>
 
             {!episode.audioUrl && (
-              <p className="mt-4 text-sm text-gray-400">Audio belum dimuat naik.</p>
+              <p className="mt-4 text-sm text-gray-400">{copy.noAudio}</p>
             )}
           </div>
         </div>
@@ -499,7 +510,7 @@ export default function ShareEpisodePage() {
           <div className="mt-6 rounded-[28px] border border-white/10 bg-white/[0.04] p-5 shadow-[0_14px_40px_rgba(0,0,0,0.2)] backdrop-blur-xl">
             <div className="mb-3">
               <h2 className="text-[13px] font-semibold uppercase tracking-[0.22em] text-white/50">
-                Perkongsian Episod
+                {copy.share}
               </h2>
               <div className="mt-2 h-[2px] w-14 rounded-full bg-[#7A1F2B]" />
             </div>
@@ -509,6 +520,10 @@ export default function ShareEpisodePage() {
                 {shareDescription}
               </p>
             ) : null}
+
+            {episode.description && !localizedEpisode?.descriptionTranslated && (
+              <p className="mt-2 text-xs text-[#D4AF37]">{copy.originalContent}</p>
+            )}
 
             {shareNote && (
               <div className="mt-4 rounded-2xl border border-[#D4AF37]/20 bg-[#D4AF37]/10 px-4 py-3 text-sm text-[#E8D28A]">

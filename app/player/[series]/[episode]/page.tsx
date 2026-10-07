@@ -14,6 +14,14 @@ import {
   Trash2,
 } from "lucide-react";
 import { db } from "../../../../lib/firebase";
+import { useLanguage } from "../../../../components/LanguageProvider";
+import { localizeContent, type TranslatableContent } from "../../../../lib/localizedContent";
+
+const COPY = {
+  ms: { missingEpisode: "Episod tidak dijumpai", missingSeries: "Siri tidak dijumpai", loadFailed: "Gagal memuatkan episod", loading: "Memuatkan episod...", back: "Kembali ke Senarai Episod", playing: "Sedang Dimainkan", paused: "Dijeda", untitled: "Tanpa Tajuk", speaker: "Penyampai", unknownSpeaker: "Penyampai tidak diketahui", addMarker: "Tambah penanda", markerExists: "Penanda sudah ada sekitar", markerAdded: "Penanda ditambah pada", previous: "Sebelum", next: "Seterusnya", play: "Main", pause: "Jeda", noAudio: "Audio belum dimuat naik.", description: "Huraian Episod", noDescription: "Tiada huraian untuk episod ini.", reviewMarkers: "Penanda Ulang Kaji", markersHelp: "Simpan poin penting untuk ulang kaji kemudian", markersEmpty: "Belum ada penanda. Tekan butang penanda semasa audio sedang berjalan.", deleteMarker: "Padam penanda", marker: "Penanda", note: "Tulis nota atau poin penting di sini...", originalContent: "Huraian dalam bahasa asal", shareDescription: "Dengar episod ini di Aqsa Series." },
+  en: { missingEpisode: "Episode not found", missingSeries: "Series not found", loadFailed: "Unable to load episode", loading: "Loading episode...", back: "Back to episodes", playing: "Now Playing", paused: "Paused", untitled: "Untitled", speaker: "Speaker", unknownSpeaker: "Unknown speaker", addMarker: "Add marker", markerExists: "A marker already exists near", markerAdded: "Marker added at", previous: "Previous", next: "Next", play: "Play", pause: "Pause", noAudio: "Audio has not been uploaded.", description: "Episode Description", noDescription: "No description for this episode.", reviewMarkers: "Review Markers", markersHelp: "Save important points to review later", markersEmpty: "No markers yet. Add one while listening.", deleteMarker: "Delete marker", marker: "Marker", note: "Write a note or important point here...", originalContent: "Description shown in its original language", shareDescription: "Listen to this episode on Aqsa Series." },
+  ar: { missingEpisode: "لم يُعثر على الحلقة", missingSeries: "لم يُعثر على السلسلة", loadFailed: "تعذّر تحميل الحلقة", loading: "جارٍ تحميل الحلقة...", back: "العودة إلى الحلقات", playing: "قيد التشغيل", paused: "متوقف مؤقتًا", untitled: "بلا عنوان", speaker: "المتحدث", unknownSpeaker: "متحدث غير معروف", addMarker: "إضافة علامة", markerExists: "توجد علامة بالقرب من", markerAdded: "أُضيفت علامة عند", previous: "السابق", next: "التالي", play: "تشغيل", pause: "إيقاف مؤقت", noAudio: "لم يُرفع الملف الصوتي بعد.", description: "وصف الحلقة", noDescription: "لا يوجد وصف لهذه الحلقة.", reviewMarkers: "علامات المراجعة", markersHelp: "احفظ النقاط المهمة للرجوع إليها لاحقًا", markersEmpty: "لا توجد علامات بعد. أضف علامة أثناء الاستماع.", deleteMarker: "حذف العلامة", marker: "علامة", note: "اكتب ملاحظة أو نقطة مهمة هنا...", originalContent: "يُعرض الوصف بلغته الأصلية", shareDescription: "استمع إلى هذه الحلقة على Aqsa Series." },
+} as const;
 
 type EpisodeData = {
   id: string;
@@ -37,6 +45,7 @@ type EpisodeData = {
   shareCtaText?: string;
   shareImageUrl?: string;
   shareStatus?: "draft" | "ready";
+  translations?: TranslatableContent["translations"];
 };
 
 type SeriesData = {
@@ -44,6 +53,7 @@ type SeriesData = {
   title?: string;
   coverUrl?: string;
   isDeleted?: boolean;
+  translations?: TranslatableContent["translations"];
 };
 
 type SpeakerItem = {
@@ -73,6 +83,8 @@ function formatTime(seconds = 0) {
 export default function PlayerPage() {
   const params = useParams();
   const router = useRouter();
+  const { language } = useLanguage();
+  const copy = COPY[language];
 
   const {
     activeEpisode,
@@ -98,9 +110,16 @@ export default function PlayerPage() {
   const [markers, setMarkers] = useState<MarkerItem[]>([]);
   const [toast, setToast] = useState("");
 
+  const localizedSeries = series ? localizeContent("series", { ...series, id: series.id || "", title: series.title || "" }, language) : null;
+  const currentLocalizedEpisode = episode ? localizeContent("episode", { ...episode, title: episode.title || "" }, language) : null;
+
   const episodeId = String(params.episode || "");
   const seriesId = String(params.series || "");
   const routeKey = `${seriesId}/${episodeId}`;
+  const isCurrentEpisode = activeEpisode?.seriesId === seriesId && activeEpisode.episodeId === episodeId;
+  const pageIsPlaying = isCurrentEpisode && isPlaying;
+  const pageCurrentTime = isCurrentEpisode ? currentTime : 0;
+  const pageDuration = isCurrentEpisode ? duration : episode?.durationSeconds || 0;
 
   const markerStorageKey = useMemo(
     () => `aqsa_markers_${seriesId}_${episodeId}`,
@@ -115,8 +134,8 @@ export default function PlayerPage() {
   const getSpeakerName = useCallback((speakerId?: string, fallbackName?: string) => {
     if (speakerId && speakerMap[speakerId]) return speakerMap[speakerId];
     if (fallbackName?.trim()) return fallbackName;
-    return speakerId || "Penyampai tidak diketahui";
-  }, [speakerMap]);
+    return speakerId || copy.unknownSpeaker;
+  }, [speakerMap, copy.unknownSpeaker]);
 
   const episodeQueue = useMemo(() => seriesEpisodes.map((ep) => ({
     seriesId: ep.seriesId || seriesId,
@@ -152,7 +171,7 @@ export default function PlayerPage() {
         const episodeSnap = await getDoc(episodeRef);
 
         if (!episodeSnap.exists()) {
-          if (!cancelled) setError({ routeKey, message: "Episode tidak dijumpai" });
+          if (!cancelled) setError({ routeKey, message: "missingEpisode" });
           return;
         }
 
@@ -163,7 +182,7 @@ export default function PlayerPage() {
           episodeData.isDeleted === true ||
           episodeData.isPublished === false
         ) {
-          if (!cancelled) setError({ routeKey, message: "Episode tidak dijumpai" });
+          if (!cancelled) setError({ routeKey, message: "missingEpisode" });
           return;
         }
 
@@ -189,19 +208,20 @@ export default function PlayerPage() {
   shareCtaText: episodeData.shareCtaText ?? "",
   shareImageUrl: episodeData.shareImageUrl ?? "",
   shareStatus: episodeData.shareStatus ?? "draft",
+  translations: episodeData.translations ?? undefined,
 };
 
         const seriesRef = doc(db, "series", seriesId);
         const seriesSnap = await getDoc(seriesRef);
 
         if (!seriesSnap.exists()) {
-          if (!cancelled) setError({ routeKey, message: "Series tidak dijumpai" });
+          if (!cancelled) setError({ routeKey, message: "missingSeries" });
           return;
         }
 
         const seriesData = seriesSnap.data();
         if (seriesData.isDeleted === true || seriesData.isPublished === false) {
-          if (!cancelled) setError({ routeKey, message: "Series tidak dijumpai" });
+          if (!cancelled) setError({ routeKey, message: "missingSeries" });
           return;
         }
 
@@ -210,6 +230,7 @@ export default function PlayerPage() {
           title: seriesData.title ?? "",
           coverUrl: seriesData.coverUrl ?? "",
           isDeleted: seriesData.isDeleted ?? false,
+          translations: seriesData.translations ?? undefined,
         };
 
         const episodesSnap = await getDocs(collection(db, "episodes"));
@@ -229,6 +250,7 @@ export default function PlayerPage() {
             originalChapterLabel: docItem.data().originalChapterLabel ?? "",
             durationSeconds: docItem.data().durationSeconds ?? 0,
             displayOrder: docItem.data().displayOrder ?? 0,
+            translations: docItem.data().translations ?? undefined,
           }))
           .filter(
             (ep) =>
@@ -274,7 +296,7 @@ export default function PlayerPage() {
         setSpeakerMap(nextSpeakerMap);
         setLoadedRouteKey(routeKey);
       } catch {
-        if (!cancelled) setError({ routeKey, message: "Gagal memuatkan episod" });
+        if (!cancelled) setError({ routeKey, message: "loadFailed" });
       }
     }
 
@@ -287,32 +309,23 @@ export default function PlayerPage() {
   }, [episodeId, seriesId, routeKey]);
 
   useEffect(() => {
-    const saved = localStorage.getItem(markerStorageKey);
+    const timer = window.setTimeout(() => {
+      const saved = localStorage.getItem(markerStorageKey);
 
-    if (!saved) {
-      setMarkers([]);
-      return;
-    }
+      if (!saved) {
+        setMarkers([]);
+        return;
+      }
 
-    try {
-      const parsed = JSON.parse(saved);
-      setMarkers(Array.isArray(parsed) ? parsed : []);
-    } catch {
-      setMarkers([]);
-    }
+      try {
+        const parsed = JSON.parse(saved);
+        setMarkers(Array.isArray(parsed) ? parsed : []);
+      } catch {
+        setMarkers([]);
+      }
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [markerStorageKey]);
-
-  useEffect(() => {
-    if (loadedRouteKey !== routeKey || !episode || !series || !episode.audioUrl) return;
-
-    const isSameEpisode =
-      activeEpisode?.seriesId === seriesId &&
-      activeEpisode?.episodeId === episodeId;
-
-    if (!isSameEpisode && routeSyncPendingRef.current) {
-      syncEpisodeToProvider(episode);
-    }
-  }, [loadedRouteKey, routeKey, episode, series, activeEpisode, seriesId, episodeId, syncEpisodeToProvider]);
 
   useEffect(() => {
     if (loadedRouteKey !== routeKey || !activeEpisode) return;
@@ -352,17 +365,26 @@ export default function PlayerPage() {
 
   const handlePrevEpisode = async () => {
     if (!prevEpisode) return;
-    await playPrev();
+    if (isCurrentEpisode) await playPrev();
+    else {
+      await syncEpisodeToProvider(prevEpisode);
+      router.push(`/player/${seriesId}/${prevEpisode.id}`);
+    }
   };
 
   const handleNextEpisode = async () => {
     if (!nextEpisode) return;
-    await playNext();
+    if (isCurrentEpisode) await playNext();
+    else {
+      await syncEpisodeToProvider(nextEpisode);
+      router.push(`/player/${seriesId}/${nextEpisode.id}`);
+    }
   };
 
   const togglePlayPause = async () => {
     try {
-      await toggleCurrent();
+      if (isCurrentEpisode) await toggleCurrent();
+      else if (episode) await syncEpisodeToProvider(episode);
     } catch (err) {
       console.error("Gagal play/pause:", err);
     }
@@ -370,28 +392,29 @@ export default function PlayerPage() {
 
   const jumpToMarker = async (time: number) => {
     try {
+      if (!isCurrentEpisode && episode) await syncEpisodeToProvider(episode);
       seekAudio(time);
 
-      if (!isPlaying) {
+      if (isCurrentEpisode && !isPlaying) {
         await toggleCurrent();
       }
-    } catch (err: any) {
-      if (err?.name !== "AbortError") {
+    } catch (err: unknown) {
+      if (!(err instanceof Error && err.name === "AbortError")) {
         console.error("Gagal lompat ke marker:", err);
       }
     }
   };
 
   const addMarker = () => {
-    if (!episode?.audioUrl) return;
+    if (!episode?.audioUrl || !isCurrentEpisode) return;
 
-    const time = currentTime || 0;
+    const time = pageCurrentTime || 0;
     const isDuplicate = markers.some(
       (marker) => Math.abs(marker.time - time) < 2
     );
 
     if (isDuplicate) {
-      setToast(`Marker sudah ada sekitar ${formatTime(time)}`);
+      setToast(`${copy.markerExists} ${formatTime(time)}`);
       return;
     }
 
@@ -401,13 +424,13 @@ export default function PlayerPage() {
           ? crypto.randomUUID()
           : `${Date.now()}-${Math.random().toString(36).slice(2)}`,
       time,
-      label: `Marker ${markers.length + 1}`,
+      label: `${copy.marker} ${markers.length + 1}`,
       note: "",
     };
 
     const updated = [...markers, newMarker].sort((a, b) => a.time - b.time);
     saveMarkersToStorage(updated);
-    setToast(`Marker ditambah pada ${formatTime(time)}`);
+    setToast(`${copy.markerAdded} ${formatTime(time)}`);
     setIsMarkerFlash(true);
 
     setTimeout(() => {
@@ -427,7 +450,7 @@ export default function PlayerPage() {
     saveMarkersToStorage(updated);
   };
 
-  const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
+  const progressPercent = pageDuration > 0 ? (pageCurrentTime / pageDuration) * 100 : 0;
 
   const coverImage =
     series?.coverUrl ||
@@ -435,18 +458,15 @@ export default function PlayerPage() {
     episode?.imageUrl ||
     "https://images.unsplash.com/photo-1521295121783-8a321d551ad2?q=80&w=1200&auto=format&fit=crop";
 
- const seriesTitle = (series?.title || "").trim().toLowerCase();
-const episodeTitle = (episode?.title || "").trim().toLowerCase();
+ const seriesTitle = (localizedSeries?.title || "").trim().toLowerCase();
+const episodeTitle = (currentLocalizedEpisode?.title || "").trim().toLowerCase();
 const showSeriesTitle = !!seriesTitle && seriesTitle !== episodeTitle;
 
-const shareTitle = episode?.shareTitle || episode?.title || "Aqsa Series";
+const shareTitle = currentLocalizedEpisode?.title || "Aqsa Series";
 const shareDescription =
-  episode?.shareDescription ||
-  episode?.description ||
-  "Dengar episod ini di Aqsa Series.";
+  currentLocalizedEpisode?.description || copy.shareDescription;
 
-const shareNote = episode?.shareNote || "";
-const shareCtaText = episode?.shareCtaText || "Dengar sekarang di Aqsa Series";
+const shareNote = language === "ms" ? episode?.shareNote || "" : "";
 
 const shareUrl =
   typeof window !== "undefined"
@@ -457,7 +477,7 @@ const shareUrl =
   if (error?.routeKey === routeKey) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-[#0f1115] text-white">
-        <h1 className="text-xl">{error.message}</h1>
+        <h1 className="text-xl">{copy[error.message as keyof typeof copy] || copy.loadFailed}</h1>
       </main>
     );
   }
@@ -465,7 +485,7 @@ const shareUrl =
   if (loadedRouteKey !== routeKey || !episode) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-[#0f1115] text-white">
-        <p>Memuatkan episod...</p>
+        <p>{copy.loading}</p>
       </main>
     );
   }
@@ -482,14 +502,14 @@ const shareUrl =
           onClick={() => router.push(`/series/${seriesId}`)}
           className="mb-6 text-sm text-gray-400 transition hover:text-white/80"
         >
-          ← Kembali ke Senarai Episod
+          {language === "ar" ? "→" : "←"} {copy.back}
         </button>
 
         <div className="overflow-hidden rounded-[32px] border border-white/10 bg-[#171a20] shadow-[0_28px_90px_rgba(0,0,0,0.48)]">
           <div className="relative h-80 overflow-hidden">
             <img
               src={coverImage}
-              alt={episode.title || "Cover episode"}
+              alt={currentLocalizedEpisode?.title || copy.untitled}
               className="h-full w-full object-cover"
             />
 
@@ -497,7 +517,7 @@ const shareUrl =
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.10),transparent_35%)]" />
 
             <div className="absolute left-5 top-5 flex items-end gap-[3px] rounded-2xl border border-white/10 bg-black/25 px-3 py-2 backdrop-blur-md">
-              {isPlaying ? (
+              {pageIsPlaying ? (
                 <>
                   <span className="eq-smooth h-3 w-1 rounded-full bg-white/90 animate-[equalize_1.4s_cubic-bezier(0.4,0,0.2,1)_infinite]" />
                   <span
@@ -529,14 +549,14 @@ const shareUrl =
             </div>
 
             <div className="absolute right-4 top-4 rounded-full border border-white/15 bg-black/25 px-3 py-1 text-[11px] text-white/90 backdrop-blur-md">
-              Sedang Dimainkan
+              {pageIsPlaying ? copy.playing : copy.paused}
             </div>
 
             <div className="absolute bottom-0 left-0 right-0 p-5">
               <div className="rounded-[26px] border border-white/10 bg-black/20 p-4 backdrop-blur-md">
                 {showSeriesTitle && (
                   <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/55">
-                    {series?.title}
+                    {localizedSeries?.title}
                   </p>
                 )}
 
@@ -545,7 +565,7 @@ const shareUrl =
                     showSeriesTitle ? "mt-2" : ""
                   }`}
                 >
-                  {episode.title || "Tanpa Tajuk"}
+                  {currentLocalizedEpisode?.title || copy.untitled}
                 </h1>
               </div>
             </div>
@@ -555,7 +575,7 @@ const shareUrl =
             <div className="mb-5 flex items-start justify-between gap-4">
               <div className="min-w-0">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/45">
-                  Penyampai
+                  {copy.speaker}
                 </p>
                 <p className="mt-1 text-sm font-medium text-white/90">
                   {getSpeakerName(episode.speakerId, episode.speakerName)}
@@ -566,8 +586,8 @@ const shareUrl =
                 <button
                   type="button"
                   onClick={addMarker}
-                  aria-label="Tambah marker"
-                  disabled={!episode.audioUrl}
+                  aria-label={copy.addMarker}
+                  disabled={!episode.audioUrl || !isCurrentEpisode}
                   className={`relative flex h-[68px] w-[68px] items-center justify-center rounded-full border border-[#D4AF37]/45 bg-[#D4AF37]/10 shadow-[0_0_22px_rgba(212,175,55,0.18)] backdrop-blur-xl transition duration-300 active:scale-95 disabled:opacity-40 ${
                     isMarkerFlash
                       ? "ring-4 ring-[#D4AF37]/25 shadow-[0_0_34px_rgba(212,175,55,0.28)]"
@@ -586,12 +606,12 @@ const shareUrl =
                 <button
                   type="button"
                   onClick={togglePlayPause}
-                  aria-label={isPlaying ? "Pause" : "Play"}
+                  aria-label={pageIsPlaying ? copy.pause : copy.play}
                   disabled={!episode.audioUrl}
                   className="relative flex h-[68px] w-[68px] items-center justify-center rounded-full bg-red-500 text-white shadow-[0_18px_36px_rgba(239,68,68,0.32)] transition duration-300 active:scale-95 disabled:opacity-40"
                 >
                   <div className="absolute inset-[1px] rounded-full bg-gradient-to-br from-white/20 via-transparent to-black/10" />
-                  {isPlaying ? (
+                  {pageIsPlaying ? (
                     <Pause size={28} fill="currentColor" className="relative z-10" />
                   ) : (
                     <Play
@@ -604,7 +624,7 @@ const shareUrl =
               </div>
             </div>
 
-            <div className="mb-2">
+            <div className="mb-2" dir="ltr">
               <div className="relative h-6">
                 <div className="absolute top-1/2 h-2 w-full -translate-y-1/2 rounded-full bg-white/15" />
 
@@ -613,9 +633,9 @@ const shareUrl =
                   style={{ width: `${progressPercent}%` }}
                 />
 
-                {duration > 0 &&
+                {pageDuration > 0 &&
                   markers.map((marker) => {
-                    const left = `${(marker.time / duration) * 100}%`;
+                    const left = `${(marker.time / pageDuration) * 100}%`;
 
                     return (
                       <button
@@ -632,12 +652,12 @@ const shareUrl =
                 <input
                   type="range"
                   min={0}
-                  max={duration || 0}
+                  max={pageDuration || 0}
                   step={0.1}
-                  value={currentTime}
+                  value={pageCurrentTime}
                   onChange={(e) => seekAudio(Number(e.target.value))}
                   className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-                  disabled={!episode.audioUrl}
+                  disabled={!episode.audioUrl || !isCurrentEpisode}
                 />
 
                 <div
@@ -647,8 +667,8 @@ const shareUrl =
               </div>
 
               <div className="mt-2 flex justify-between text-sm font-medium text-white/75">
-                <span>{formatTime(currentTime)}</span>
-                <span>{formatTime(duration)}</span>
+                <span>{formatTime(pageCurrentTime)}</span>
+                <span>{formatTime(pageDuration)}</span>
               </div>
             </div>
 
@@ -661,7 +681,7 @@ const shareUrl =
               >
                 <span className="flex items-center justify-center gap-2">
                   <SkipBack size={18} />
-                  Prev
+                  {copy.previous}
                 </span>
               </button>
 
@@ -671,7 +691,7 @@ const shareUrl =
                 disabled={!episode.audioUrl}
                 className="rounded-[22px] border border-white/12 bg-[#24272d] px-4 py-3 text-base font-semibold text-white/90 shadow-[0_10px_26px_rgba(0,0,0,0.14)] transition duration-300 hover:bg-[#2c3037] active:scale-[0.985] disabled:opacity-40"
               >
-                {isPlaying ? "Pause" : "Play"}
+                {pageIsPlaying ? copy.pause : copy.play}
               </button>
 
               <button
@@ -681,7 +701,7 @@ const shareUrl =
                 className="rounded-[22px] border border-white/12 bg-[#24272d] px-4 py-3 text-base font-semibold text-white/90 shadow-[0_10px_26px_rgba(0,0,0,0.14)] transition duration-300 hover:bg-[#2c3037] active:scale-[0.985] disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <span className="flex items-center justify-center gap-2">
-                  Next
+                  {copy.next}
                   <SkipForward size={18} />
                 </span>
               </button>
@@ -696,26 +716,30 @@ const shareUrl =
 </div> 
 
             {!episode.audioUrl && (
-              <p className="mt-4 text-sm text-gray-400">Audio belum dimuat naik.</p>
+              <p className="mt-4 text-sm text-gray-400">{copy.noAudio}</p>
             )}
           </div>
         </div>
 
-        {(episode.description || shareNote || shareCtaText || episode.speakerName || episode.speakerId) && (
+        {(episode.description || shareNote || episode.speakerName || episode.speakerId) && (
           <div className="mt-6 rounded-[28px] border border-white/10 bg-white/[0.04] p-5 shadow-[0_14px_40px_rgba(0,0,0,0.2)] backdrop-blur-xl">
             <div className="mb-3">
               <h2 className="text-[13px] font-semibold uppercase tracking-[0.22em] text-white/50">
-                Huraian Episod
+                {copy.description}
               </h2>
               <div className="mt-2 h-[2px] w-14 rounded-full bg-[#7A1F2B]" />
             </div>
 
             {episode.description ? (
               <p className="text-[15px] leading-7 text-white/88">
-                {episode.description}
+                {currentLocalizedEpisode?.description}
               </p>
             ) : (
-              <p className="text-sm text-white/50">Tiada huraian untuk episod ini.</p>
+              <p className="text-sm text-white/50">{copy.noDescription}</p>
+            )}
+
+            {episode.description && !currentLocalizedEpisode?.descriptionTranslated && (
+              <p className="mt-2 text-xs text-[#D4AF37]">{copy.originalContent}</p>
             )}
 
             {shareNote && (
@@ -724,31 +748,26 @@ const shareUrl =
   </div>
 )}
 
-{shareCtaText && (
-  <p className="mt-4 text-sm font-medium text-white/75">
-    {shareCtaText}
-  </p>
-)}
           </div>
         )}
 
         <div className="mt-6 rounded-[28px] border border-white/10 bg-white/[0.04] p-4 shadow-[0_14px_40px_rgba(0,0,0,0.2)] backdrop-blur-xl">
           <div className="mb-4 flex items-center justify-between">
             <div>
-              <h3 className="text-base font-bold">Marker Ulangkaji</h3>
+              <h3 className="text-base font-bold">{copy.reviewMarkers}</h3>
               <p className="mt-1 text-xs text-white/45">
-                Simpan poin penting untuk ulangkaji kemudian
+                {copy.markersHelp}
               </p>
             </div>
 
             <span className="rounded-full border border-[#D4AF37]/20 bg-[#D4AF37]/10 px-3 py-1 text-xs font-medium text-[#E8D28A]">
-              {markers.length} marker
+              {markers.length} {copy.marker.toLowerCase()}
             </span>
           </div>
 
           {markers.length === 0 ? (
             <div className="rounded-[22px] border border-white/10 bg-black/10 px-4 py-4 text-sm text-white/60">
-              Belum ada marker. Tekan butang marker semasa audio sedang berjalan.
+              {copy.markersEmpty}
             </div>
           ) : (
             <div className="space-y-2.5">
@@ -775,7 +794,7 @@ const shareUrl =
                       type="button"
                       onClick={() => deleteMarker(marker.id)}
                       className="rounded-xl border border-white/10 bg-white/5 p-2 text-white/75 transition hover:bg-white/10"
-                      aria-label="Padam marker"
+                      aria-label={copy.deleteMarker}
                     >
                       <Trash2 size={16} />
                     </button>
@@ -784,7 +803,7 @@ const shareUrl =
                   <textarea
                     value={marker.note || ""}
                     onChange={(e) => updateMarkerNote(marker.id, e.target.value)}
-                    placeholder="Tulis nota atau point penting di sini..."
+                    placeholder={copy.note}
                     className="mt-3 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white/85 outline-none placeholder:text-white/35 focus:border-[#D4AF37]/35"
                     rows={2}
                   />

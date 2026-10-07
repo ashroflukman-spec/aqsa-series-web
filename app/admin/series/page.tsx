@@ -34,7 +34,11 @@ type SeriesItem = {
   originalLanguage?: string;
   originalWorkCoverUrl?: string;
   isDeleted?: boolean;
+  translations?: { en?: { title?: string; description?: string }; ar?: { title?: string; description?: string } };
 };
+
+type TranslationDraft = { en: { title: string; description: string }; ar: { title: string; description: string } };
+const EMPTY_TRANSLATIONS: TranslationDraft = { en: { title: "", description: "" }, ar: { title: "", description: "" } };
 
 type EpisodeCountMap = Record<string, number>;
 
@@ -49,6 +53,7 @@ export default function AdminSeriesPage() {
   const [slug, setSlug] = useState("");
   const [speakerId, setSpeakerId] = useState("");
   const [description, setDescription] = useState("");
+  const [translationDraft, setTranslationDraft] = useState<TranslationDraft>(EMPTY_TRANSLATIONS);
   const [sortOrder, setSortOrder] = useState("1");
   const [isPublished, setIsPublished] = useState(true);
 
@@ -92,6 +97,7 @@ export default function AdminSeriesPage() {
     setTitle("");
     setSlug("");
     setDescription("");
+    setTranslationDraft(EMPTY_TRANSLATIONS);
     setSortOrder("1");
     setIsPublished(true);
 
@@ -165,6 +171,7 @@ export default function AdminSeriesPage() {
           title: docItem.data().title ?? "",
           speakerId: docItem.data().speakerId ?? "",
           description: docItem.data().description ?? "",
+          translations: docItem.data().translations ?? undefined,
           coverUrl: docItem.data().coverUrl ?? "",
           sortOrder: docItem.data().sortOrder ?? 0,
           isPublished: docItem.data().isPublished ?? false,
@@ -193,8 +200,8 @@ export default function AdminSeriesPage() {
       });
 
       setEpisodeCountMap(counts);
-    } catch (err: any) {
-      setError(err?.message || "Gagal memuatkan data.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Gagal memuatkan data.");
     } finally {
       setLoading(false);
     }
@@ -277,6 +284,10 @@ export default function AdminSeriesPage() {
     setSlug(item.id);
     setSpeakerId(item.speakerId);
     setDescription(item.description);
+    setTranslationDraft({
+      en: { title: item.translations?.en?.title || "", description: item.translations?.en?.description || "" },
+      ar: { title: item.translations?.ar?.title || "", description: item.translations?.ar?.description || "" },
+    });
     setSortOrder(String(item.sortOrder || 1));
     setIsPublished(item.isPublished);
 
@@ -327,8 +338,8 @@ export default function AdminSeriesPage() {
 
       await loadData();
       setMessage("Series dipindahkan ke Trash.");
-    } catch (err: any) {
-      setError(err?.message || "Gagal memindahkan series ke Trash.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Gagal memindahkan series ke Trash.");
     } finally {
       setMovingToTrashId("");
     }
@@ -368,6 +379,10 @@ export default function AdminSeriesPage() {
           slug: finalSlug,
           speakerId,
           description: description.trim(),
+          translations: {
+            en: { title: translationDraft.en.title.trim(), description: translationDraft.en.description.trim() },
+            ar: { title: translationDraft.ar.title.trim(), description: translationDraft.ar.description.trim() },
+          },
           coverUrl: coverUrl || "",
           sortOrder: Number(sortOrder) || 1,
           isPublished,
@@ -393,8 +408,8 @@ export default function AdminSeriesPage() {
 
       resetForm();
       await loadData();
-    } catch (err: any) {
-      setError(err?.message || "Gagal menyimpan series.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Gagal menyimpan series.");
     } finally {
       setSaving(false);
       setUploading(false);
@@ -459,6 +474,32 @@ export default function AdminSeriesPage() {
             placeholder="Description"
             className="w-full rounded-xl bg-[#14161b] px-4 py-3"
           />
+
+          <div className="space-y-4 rounded-2xl border border-white/10 bg-[#14161b] p-4">
+            <div>
+              <p className="text-sm font-semibold">Terjemahan kandungan editorial</p>
+              <p className="mt-1 text-xs text-gray-400">Isi tajuk dan huraian English / العربية. Petikan al-Quran dan tafsir perlu bersumber serta beratribusi secara berasingan.</p>
+            </div>
+            {(["en", "ar"] as const).map((code) => (
+              <div key={code} className="space-y-2">
+                <p className="text-xs font-semibold text-[#D4AF37]">{code === "en" ? "English" : "العربية"}</p>
+                <input
+                  dir={code === "ar" ? "rtl" : "ltr"}
+                  value={translationDraft[code].title}
+                  onChange={(e) => setTranslationDraft((current) => ({ ...current, [code]: { ...current[code], title: e.target.value } }))}
+                  placeholder={code === "en" ? "Series title in English" : "عنوان السلسلة بالعربية"}
+                  className="w-full rounded-xl bg-[#0f1115] px-4 py-3"
+                />
+                <textarea
+                  dir={code === "ar" ? "rtl" : "ltr"}
+                  value={translationDraft[code].description}
+                  onChange={(e) => setTranslationDraft((current) => ({ ...current, [code]: { ...current[code], description: e.target.value } }))}
+                  placeholder={code === "en" ? "Series description in English" : "وصف السلسلة بالعربية"}
+                  className="w-full rounded-xl bg-[#0f1115] px-4 py-3"
+                />
+              </div>
+            ))}
+          </div>
 
           <input
             value={sortOrder}

@@ -4,6 +4,14 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { collection, getDocs, orderBy, query } from "firebase/firestore";
 import { db } from "../../lib/firebase";
+import { useLanguage } from "../../components/LanguageProvider";
+import { localizeContent, type TranslatableContent } from "../../lib/localizedContent";
+
+const COPY = {
+  ms: { back: "Kembali", title: "Pustaka", subtitle: "Semua siri dan episod yang tersedia.", loading: "Sedang memuatkan pustaka...", empty: "Tiada siri dijumpai.", speaker: "Penyampai", unknownSpeaker: "Penyampai tidak diketahui" },
+  en: { back: "Back", title: "Library", subtitle: "Browse all available series and episodes.", loading: "Loading library...", empty: "No series found.", speaker: "Speaker", unknownSpeaker: "Unknown speaker" },
+  ar: { back: "رجوع", title: "المكتبة", subtitle: "تصفح جميع السلاسل والحلقات المتاحة.", loading: "جارٍ تحميل المكتبة...", empty: "لم يُعثر على سلاسل.", speaker: "المتحدث", unknownSpeaker: "متحدث غير معروف" },
+} as const;
 
 type SeriesItem = {
   id: string;
@@ -13,6 +21,7 @@ type SeriesItem = {
   isPublished: boolean;
   sortOrder: number;
   isDeleted?: boolean;
+  translations?: TranslatableContent["translations"];
 };
 
 type EpisodeItem = {
@@ -25,6 +34,7 @@ type EpisodeItem = {
   displayOrder?: number;
   isPublished?: boolean;
   isDeleted?: boolean;
+  translations?: TranslatableContent["translations"];
 };
 
 type SpeakerItem = {
@@ -45,6 +55,8 @@ function formatDuration(seconds = 0) {
 
 export default function LibraryPage() {
   const router = useRouter();
+  const { language } = useLanguage();
+  const copy = COPY[language];
 
   const [series, setSeries] = useState<SeriesItem[]>([]);
   const [episodes, setEpisodes] = useState<EpisodeItem[]>([]);
@@ -70,6 +82,7 @@ export default function LibraryPage() {
             isPublished: docItem.data().isPublished ?? false,
             sortOrder: docItem.data().sortOrder ?? 0,
             isDeleted: docItem.data().isDeleted ?? false,
+            translations: docItem.data().translations ?? undefined,
           }))
           .filter((item) => item.isPublished === true && item.isDeleted !== true);
 
@@ -87,6 +100,7 @@ export default function LibraryPage() {
             displayOrder: docItem.data().displayOrder ?? 0,
             isPublished: docItem.data().isPublished ?? false,
             isDeleted: docItem.data().isDeleted ?? false,
+            translations: docItem.data().translations ?? undefined,
           }))
           .filter((item) => item.isPublished === true && item.isDeleted !== true)
           .sort((a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0));
@@ -123,8 +137,8 @@ export default function LibraryPage() {
         }
 
         setSpeakerMap(nextSpeakerMap);
-      } catch (err: any) {
-        setError(err?.message || "Gagal memuatkan library");
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "Gagal memuatkan library");
       } finally {
         setLoading(false);
       }
@@ -134,7 +148,7 @@ export default function LibraryPage() {
   }, []);
 
   function getSpeakerName(speakerId: string) {
-    return speakerMap[speakerId] || speakerId || "Speaker tidak diketahui";
+    return speakerMap[speakerId] || speakerId || copy.unknownSpeaker;
   }
 
   function getEpisodesBySeries(seriesId: string) {
@@ -149,20 +163,20 @@ export default function LibraryPage() {
             onClick={() => router.push("/")}
             className="text-sm text-gray-400"
           >
-            ← Kembali
+            ← {copy.back}
           </button>
         </div>
 
         <div className="mb-8">
-          <h1 className="text-2xl font-bold">Library</h1>
+          <h1 className="text-2xl font-bold">{copy.title}</h1>
           <p className="mt-2 text-sm text-gray-400">
-            Senarai semua series dan episod yang tersedia.
+            {copy.subtitle}
           </p>
         </div>
 
         {loading && (
           <div className="rounded-2xl bg-[#1f232b] p-5 text-sm text-gray-300">
-            Sedang memuatkan library...
+            {copy.loading}
           </div>
         )}
 
@@ -174,7 +188,7 @@ export default function LibraryPage() {
 
         {!loading && !error && series.length === 0 && (
           <div className="rounded-2xl bg-[#1f232b] p-5 text-sm text-gray-400">
-            Tiada series dijumpai.
+            {copy.empty}
           </div>
         )}
 
@@ -193,7 +207,7 @@ export default function LibraryPage() {
                       {item.coverUrl && item.coverUrl.trim() !== "" ? (
                         <img
                           src={item.coverUrl}
-                          alt={item.title}
+                          alt={localizeContent("series", item, language).title}
                           className="absolute inset-0 w-full h-full object-cover"
                         />
                       ) : (
@@ -204,11 +218,11 @@ export default function LibraryPage() {
 
                       <div className="absolute bottom-4 left-4 right-4">
                         <div className="text-lg font-semibold leading-snug">
-                          {item.title}
+                          {localizeContent("series", item, language).title}
                         </div>
 
                         <div className="mt-1 text-sm text-gray-300">
-                          Penyampai · {getSpeakerName(item.speakerId)}
+                          {copy.speaker} · {getSpeakerName(item.speakerId)}
                         </div>
                       </div>
                     </div>
@@ -224,9 +238,9 @@ export default function LibraryPage() {
                           }
                           className="bg-[#1f232b] rounded-2xl p-4 cursor-pointer hover:bg-[#262b35] transition"
                         >
-                          <div className="text-sm font-semibold">{ep.title}</div>
+                          <div className="text-sm font-semibold">{localizeContent("episode", ep, language).title}</div>
                           <div className="text-xs text-gray-400 mt-1">
-                            {item.title} • {formatDuration(ep.durationSeconds || 0)}
+                            {localizeContent("series", item, language).title} • {formatDuration(ep.durationSeconds || 0)}
                           </div>
                         </div>
                       ))}

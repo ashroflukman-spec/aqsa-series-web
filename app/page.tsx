@@ -9,6 +9,15 @@ import { useAuth } from "../components/AuthProvider";
 import SeriesEpisodeCarousel, {
   type CarouselEpisode,
 } from "../components/SeriesEpisodeCarousel";
+import { useLanguage } from "../components/LanguageProvider";
+import { localizeContent, type TranslatableContent } from "../lib/localizedContent";
+import { videoCategoryLabel } from "../lib/videoCategory";
+
+const COPY = {
+  ms: { tagline: "Siri Pengetahuan Baitulmaqdis Kita Bermula Di Sini", search: "Cari siri...", admin: "Panel Admin", nowPlaying: "Sedang Dimainkan", item: "item", resume: "Sambung", videoHighlight: "Video Pilihan", seeAll: "Lihat Semua", fullLibrary: "Pustaka Penuh", seeAllVideos: "Lihat Semua Video", videosHint: "Teruskan ke Pustaka Video Aqsa Series", swipeOrTap: "Leret atau tekan", results: "Hasil Carian", popular: "Siri Audio Popular", series: "siri", loading: "Sedang memuatkan kandungan...", noSeries: "Tiada siri dijumpai.", speaker: "Penyampai", unknownSpeaker: "Penyampai tidak diketahui", unspecified: "Tidak dinyatakan" },
+  en: { tagline: "Your journey through Baitulmaqdis begins here", search: "Search series...", admin: "Admin dashboard", nowPlaying: "Continue Listening", item: "item", resume: "Resume", videoHighlight: "Featured Videos", seeAll: "View All", fullLibrary: "Full Library", seeAllVideos: "Explore All Videos", videosHint: "Open the Aqsa Series video library", swipeOrTap: "Swipe or tap", results: "Search Results", popular: "Popular Audio Series", series: "series", loading: "Loading content...", noSeries: "No series found.", speaker: "Speaker", unknownSpeaker: "Unknown speaker", unspecified: "Not specified" },
+  ar: { tagline: "رحلتك في معرفة بيت المقدس تبدأ هنا", search: "ابحث عن سلسلة...", admin: "لوحة الإدارة", nowPlaying: "تابع الاستماع", item: "عنصر", resume: "متابعة", videoHighlight: "فيديوهات مختارة", seeAll: "عرض الكل", fullLibrary: "المكتبة الكاملة", seeAllVideos: "استكشف جميع الفيديوهات", videosHint: "افتح مكتبة فيديو سلسلة الأقصى", swipeOrTap: "اسحب أو اضغط", results: "نتائج البحث", popular: "السلاسل الصوتية الشائعة", series: "سلاسل", loading: "جارٍ تحميل المحتوى...", noSeries: "لم يُعثر على سلاسل.", speaker: "المتحدث", unknownSpeaker: "متحدث غير معروف", unspecified: "غير مذكور" },
+} as const;
 
 type SeriesItem = {
   id: string;
@@ -18,6 +27,7 @@ type SeriesItem = {
   isPublished: boolean;
   sortOrder: number;
   isDeleted?: boolean;
+  translations?: TranslatableContent["translations"];
 };
 
 type SpeakerItem = {
@@ -85,6 +95,8 @@ function getYouTubeThumbnail(youtubeId: string) {
 export default function Page() {
   const router = useRouter();
   const { user } = useAuth();
+  const { language } = useLanguage();
+  const copy = COPY[language];
 
   const [search, setSearch] = useState("");
   const [series, setSeries] = useState<SeriesItem[]>([]);
@@ -142,6 +154,7 @@ export default function Page() {
             isPublished: docItem.data().isPublished ?? false,
             sortOrder: docItem.data().sortOrder ?? 0,
             isDeleted: docItem.data().isDeleted ?? false,
+            translations: docItem.data().translations ?? undefined,
           }))
           .filter((item) => item.isPublished === true && item.isDeleted !== true);
 
@@ -158,6 +171,7 @@ export default function Page() {
             displayOrder: docItem.data().displayOrder ?? 0,
             isPublished: docItem.data().isPublished ?? false,
             isDeleted: docItem.data().isDeleted ?? false,
+            translations: docItem.data().translations ?? undefined,
           }))
           .filter((item) => item.isPublished === true && item.isDeleted !== true)
           .sort((a, b) => a.displayOrder - b.displayOrder);
@@ -249,12 +263,14 @@ export default function Page() {
   const filteredSeries = useMemo(() => {
     return series.filter((item) => {
       const speakerName = speakerMap[item.speakerId] || "";
+      const localizedTitle = localizeContent("series", item, language).title;
       return (
         item.title.toLowerCase().includes(normalized) ||
+        localizedTitle.toLowerCase().includes(normalized) ||
         speakerName.toLowerCase().includes(normalized)
       );
     });
-  }, [series, speakerMap, normalized]);
+  }, [series, speakerMap, normalized, language]);
 
   const episodesBySeries = useMemo(() => {
     const grouped: Record<string, CarouselEpisode[]> = {};
@@ -280,7 +296,7 @@ export default function Page() {
 }, [videos]);
 
   function getSpeakerName(speakerId: string) {
-    return speakerMap[speakerId] || speakerId || "Speaker tidak diketahui";
+    return speakerMap[speakerId] || speakerId || copy.unknownSpeaker;
   }
 
   const navigateToVideos = useCallback(() => {
@@ -448,7 +464,7 @@ export default function Page() {
               />
 
               <p className="mt-3 text-sm text-gray-400">
-                Siri Pengetahuan Baitulmaqdis Kita Bermula Di Sini
+                {copy.tagline}
               </p>
 
               {user && (
@@ -456,7 +472,7 @@ export default function Page() {
                   onClick={() => router.push("/admin")}
                   className="mt-4 rounded-full border border-white/10 bg-[#1f232b] px-4 py-2 text-[11px] font-medium text-white/85 transition hover:bg-[#2a2f39]"
                 >
-                  Admin Dashboard
+                  {copy.admin}
                 </button>
               )}
             </div>
@@ -466,7 +482,7 @@ export default function Page() {
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Cari series..."
+                placeholder={copy.search}
                 className="w-full rounded-full border border-white/10 bg-[#16191f] px-5 py-3.5 text-sm text-white shadow-inner outline-none placeholder:text-gray-500 focus:border-[#7A1F2B] focus:ring-2 focus:ring-[#7A1F2B]/20"
               />
             </div>
@@ -478,13 +494,13 @@ export default function Page() {
             <div className="mb-5 flex items-center justify-between">
               <div>
                 <h2 className="text-[13px] font-semibold uppercase tracking-[0.22em] text-white/55">
-                  Sedang Dimainkan
+                  {copy.nowPlaying}
                 </h2>
                 <div className="mt-2 h-[2px] w-14 rounded-full bg-[#D4AF37]" />
               </div>
 
               <span className="text-xs text-white/35">
-                {recentlyPlayed.length} item
+                {recentlyPlayed.length} {copy.item}
               </span>
             </div>
 
@@ -510,16 +526,16 @@ export default function Page() {
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
                         <span className="rounded-full border border-[#D4AF37]/30 bg-[#D4AF37]/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#E8D28A]">
-                          Sambung...
+                          {copy.resume}...
                         </span>
                       </div>
 
                       <div className="mt-3 line-clamp-2 text-[16px] font-semibold leading-[1.35] text-white">
-                        {item.episodeTitle}
+                        {localizeContent("episode", { id: item.episodeId, title: item.episodeTitle }, language).title}
                       </div>
 
                       <div className="mt-1 text-sm text-white/45">
-                        {item.seriesTitle}
+                        {localizeContent("series", { id: item.seriesId, title: item.seriesTitle }, language).title}
                       </div>
 
                       <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-white/10">
@@ -538,7 +554,7 @@ export default function Page() {
             <div className="mb-5 flex items-center justify-between">
               <div>
                 <h2 className="text-[13px] font-semibold uppercase tracking-[0.22em] text-white/55">
-                  Video Highlight
+                  {copy.videoHighlight}
                 </h2>
                 <div className="mt-2 h-[2px] w-14 rounded-full bg-[#7A1F2B]" />
               </div>
@@ -547,7 +563,7 @@ export default function Page() {
   onClick={() => router.push("/videos")}
   className="text-xs text-white/45 transition hover:text-white"
 >
-  Lihat Semua →
+  {copy.seeAll} →
 </button>
             </div>
 
@@ -578,7 +594,7 @@ export default function Page() {
 
                       <div className="absolute left-4 top-4">
                         <span className="rounded-full border border-[#D4AF37]/30 bg-[#D4AF37]/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#E8D28A]">
-                          {video.category}
+                          {videoCategoryLabel(video.category, language)}
                         </span>
                       </div>
                     </div>
@@ -589,7 +605,7 @@ export default function Page() {
                       </div>
 
                       <div className="mt-1.5 text-sm text-white/45">
-                        {video.speaker || "Tidak dinyatakan"}
+                        {video.speaker || copy.unspecified}
                       </div>
                     </div>
                   </div>
@@ -606,22 +622,22 @@ export default function Page() {
 
                     <div className="relative">
                       <span className="rounded-full border border-[#D4AF37]/30 bg-[#D4AF37]/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#E8D28A]">
-                        Full Library
+                        {copy.fullLibrary}
                       </span>
                     </div>
 
                     <div className="relative mt-12">
                       <div className="text-[24px] font-semibold leading-[1.2] text-white">
-                        Lihat Semua Video
+                        {copy.seeAllVideos}
                       </div>
                       <div className="mt-2 text-sm text-white/55">
-                        Teruskan ke Video Library Aqsa Series
+                        {copy.videosHint}
                       </div>
                     </div>
 
                     <div className="relative mt-8 flex items-center justify-between">
                       <div className="text-sm font-medium text-white/80">
-                        Swipe atau tekan →
+                        {copy.swipeOrTap} →
                       </div>
 
                       <div className="flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/[0.06]">
@@ -680,21 +696,21 @@ export default function Page() {
         <div className="mb-5 flex items-center justify-between">
           <div>
             <h2 className="text-[13px] font-semibold uppercase tracking-[0.22em] text-white/55">
-              {normalized ? "Hasil Carian" : "Siri Audio Popular"}
+              {normalized ? copy.results : copy.popular}
             </h2>
             <div className="mt-2 h-[2px] w-14 rounded-full bg-[#7A1F2B]" />
           </div>
 
           {!normalized && filteredSeries.length > 0 && (
             <span className="text-xs text-white/35">
-              {filteredSeries.length} siri
+              {filteredSeries.length} {copy.series}
             </span>
           )}
         </div>
 
         {loading && (
           <div className="rounded-2xl bg-[#1f232b] p-5 text-sm text-gray-300">
-            Sedang memuatkan kandungan...
+            {copy.loading}
           </div>
         )}
 
@@ -706,7 +722,7 @@ export default function Page() {
 
         {!loading && !error && filteredSeries.length === 0 && (
           <div className="rounded-2xl bg-[#1f232b] p-5 text-sm text-gray-400">
-            Tiada series dijumpai.
+            {copy.noSeries}
           </div>
         )}
 

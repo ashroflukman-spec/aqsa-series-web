@@ -44,7 +44,11 @@ type EpisodeItem = {
   shareCtaText?: string;
   shareImageUrl?: string;
   shareStatus?: "draft" | "ready";
+  translations?: { en?: { title?: string; description?: string }; ar?: { title?: string; description?: string } };
 };
+
+type TranslationDraft = { en: { title: string; description: string }; ar: { title: string; description: string } };
+const EMPTY_TRANSLATIONS: TranslationDraft = { en: { title: "", description: "" }, ar: { title: "", description: "" } };
 
 type PreviewItem = {
   title: string;
@@ -110,6 +114,7 @@ export default function AdminEpisodesPage() {
   const [editingEpisodeId, setEditingEpisodeId] = useState("");
   const [editTitle, setEditTitle] = useState("");
   const [editDescription, setEditDescription] = useState("");
+  const [editTranslations, setEditTranslations] = useState<TranslationDraft>(EMPTY_TRANSLATIONS);
   const [editSeriesId, setEditSeriesId] = useState("");
   const [editDisplayOrder, setEditDisplayOrder] = useState("1");
   const [editOriginalChapterLabel, setEditOriginalChapterLabel] = useState("");
@@ -155,16 +160,16 @@ const [generatingShareCopy, setGeneratingShareCopy] = useState(false);
       const seriesData = seriesSnap.docs
         .map((d) => ({
           id: d.id,
-          ...d.data(),
+          ...(d.data() as Partial<SeriesItem>),
         }))
-        .filter((item: any) => item.isDeleted !== true);
+        .filter((item) => item.isDeleted !== true);
 
       const episodeData = episodeSnap.docs
         .map((d) => ({
           id: d.id,
-          ...d.data(),
+          ...(d.data() as Partial<EpisodeItem>),
         }))
-        .filter((item: any) => item.isDeleted !== true);
+        .filter((item) => item.isDeleted !== true);
 
       setSeriesList(seriesData as SeriesItem[]);
       setEpisodes(episodeData as EpisodeItem[]);
@@ -174,8 +179,8 @@ const [generatingShareCopy, setGeneratingShareCopy] = useState(false);
         initialExpanded[s.id] = true;
       });
       setExpandedSeries(initialExpanded);
-    } catch (err: any) {
-      setError(err?.message || "Gagal memuatkan data episod.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Gagal memuatkan data episod.");
     } finally {
       setLoading(false);
     }
@@ -192,6 +197,7 @@ const [generatingShareCopy, setGeneratingShareCopy] = useState(false);
   setEditingEpisodeId("");
   setEditTitle("");
   setEditDescription("");
+  setEditTranslations(EMPTY_TRANSLATIONS);
   setEditSeriesId("");
   setEditDisplayOrder("1");
   setEditOriginalChapterLabel("");
@@ -322,8 +328,8 @@ const [generatingShareCopy, setGeneratingShareCopy] = useState(false);
       setMessage("Bulk upload berjaya. Episod dan audio telah disimpan.");
       resetBulkForm();
       await loadAll();
-    } catch (err: any) {
-      setError(err?.message || "Bulk upload gagal.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Bulk upload gagal.");
     } finally {
       setSaving(false);
     }
@@ -349,8 +355,8 @@ const [generatingShareCopy, setGeneratingShareCopy] = useState(false);
         resetEditForm();
       }
       await loadAll();
-    } catch (err: any) {
-      setError(err?.message || "Gagal memindahkan episode ke Trash.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Gagal memindahkan episode ke Trash.");
     } finally {
       setMovingToTrashId("");
     }
@@ -360,6 +366,10 @@ const [generatingShareCopy, setGeneratingShareCopy] = useState(false);
   setEditingEpisodeId(item.id);
   setEditTitle(item.title || "");
   setEditDescription(item.description || "");
+  setEditTranslations({
+    en: { title: item.translations?.en?.title || "", description: item.translations?.en?.description || "" },
+    ar: { title: item.translations?.ar?.title || "", description: item.translations?.ar?.description || "" },
+  });
   setEditSeriesId(item.seriesId || "");
   setEditDisplayOrder(String(item.displayOrder || 1));
   setEditOriginalChapterLabel(item.originalChapterLabel || "");
@@ -405,8 +415,8 @@ const [generatingShareCopy, setGeneratingShareCopy] = useState(false);
     try {
       const duration = await readAudioDuration(file);
       setEditDurationSeconds(duration);
-    } catch (err: any) {
-      setError(err?.message || "Gagal membaca durasi audio.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Gagal membaca durasi audio.");
     }
   }
 
@@ -463,6 +473,10 @@ const [generatingShareCopy, setGeneratingShareCopy] = useState(false);
   title: editTitle.trim(),
   slug: slugify(editTitle),
   description: editDescription.trim(),
+  translations: {
+    en: { title: editTranslations.en.title.trim(), description: editTranslations.en.description.trim() },
+    ar: { title: editTranslations.ar.title.trim(), description: editTranslations.ar.description.trim() },
+  },
   seriesId: editSeriesId,
   speakerId,
   audioUrl: finalAudioUrl,
@@ -484,8 +498,8 @@ const [generatingShareCopy, setGeneratingShareCopy] = useState(false);
       setMessage("Episode berjaya dikemaskini.");
       resetEditForm();
       await loadAll();
-    } catch (err: any) {
-      setError(err?.message || "Gagal mengemaskini episode.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Gagal mengemaskini episode.");
     } finally {
       setSavingEdit(false);
     }
@@ -524,8 +538,8 @@ async function handleGenerateShareCopy() {
     setEditShareCtaText((prev) => prev || generatedCta);
 
     setMessage("Cadangan share berjaya dijana.");
-  } catch (err: any) {
-    setError(err?.message || "Gagal menjana cadangan share.");
+  } catch (err: unknown) {
+    setError(err instanceof Error ? err.message : "Gagal menjana cadangan share.");
   } finally {
     setGeneratingShareCopy(false);
   }
@@ -707,6 +721,32 @@ Bab 3 - Strategi Pembebasan`}
                 placeholder="Description"
                 className="w-full rounded-xl bg-[#14161b] px-4 py-3"
               />
+
+              <div className="space-y-4 rounded-2xl border border-white/10 bg-[#14161b] p-4">
+                <div>
+                  <p className="text-sm font-semibold">Terjemahan kandungan editorial</p>
+                  <p className="mt-1 text-xs text-gray-400">Isi tajuk dan huraian English / العربية. Petikan al-Quran dan tafsir perlu bersumber serta beratribusi secara berasingan.</p>
+                </div>
+                {(["en", "ar"] as const).map((code) => (
+                  <div key={code} className="space-y-2">
+                    <p className="text-xs font-semibold text-[#D4AF37]">{code === "en" ? "English" : "العربية"}</p>
+                    <input
+                      dir={code === "ar" ? "rtl" : "ltr"}
+                      value={editTranslations[code].title}
+                      onChange={(e) => setEditTranslations((current) => ({ ...current, [code]: { ...current[code], title: e.target.value } }))}
+                      placeholder={code === "en" ? "Episode title in English" : "عنوان الحلقة بالعربية"}
+                      className="w-full rounded-xl bg-[#0f1115] px-4 py-3"
+                    />
+                    <textarea
+                      dir={code === "ar" ? "rtl" : "ltr"}
+                      value={editTranslations[code].description}
+                      onChange={(e) => setEditTranslations((current) => ({ ...current, [code]: { ...current[code], description: e.target.value } }))}
+                      placeholder={code === "en" ? "Episode description in English" : "وصف الحلقة بالعربية"}
+                      className="w-full rounded-xl bg-[#0f1115] px-4 py-3"
+                    />
+                  </div>
+                ))}
+              </div>
 
               <div className="rounded-2xl border border-white/10 bg-[#14161b] p-4 space-y-4">
   <div className="flex items-center justify-between">

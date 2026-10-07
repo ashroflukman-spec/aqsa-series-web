@@ -3,6 +3,14 @@
 import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useAudio } from "./AudioProvider";
+import { useLanguage } from "./LanguageProvider";
+import { localizeContent } from "../lib/localizedContent";
+
+const COPY = {
+  ms: { playing: "Sedang Dimainkan", continue: "Sambung Dengar", cover: "Kulit" },
+  en: { playing: "Now Playing", continue: "Continue Listening", cover: "Cover" },
+  ar: { playing: "قيد التشغيل", continue: "متابعة الاستماع", cover: "الغلاف" },
+} as const;
 
 type MiniPlayerState = {
   seriesId: string;
@@ -16,6 +24,8 @@ export default function MiniPlayer() {
   const router = useRouter();
   const pathname = usePathname();
   const { activeEpisode, isPlaying } = useAudio();
+  const { language } = useLanguage();
+  const copy = COPY[language];
 
   const [showMiniPlayer, setShowMiniPlayer] = useState(true);
   const [currentItem, setCurrentItem] = useState<MiniPlayerState | null>(null);
@@ -107,7 +117,7 @@ if (!shouldShow || !safeCurrentItem) {
               />
             ) : (
               <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-[#20252f] to-[#12151b] text-[10px] text-gray-400">
-                Cover
+                {copy.cover}
               </div>
             )}
 
@@ -117,13 +127,13 @@ if (!shouldShow || !safeCurrentItem) {
 
           <div className="min-w-0 flex-1">
             <p className="truncate text-[9px] font-semibold uppercase tracking-[0.22em] text-[#E7D7A2]">
-              {isPlaying ? "Now Playing" : "Continue Listening"}
+              {isPlaying ? copy.playing : copy.continue}
             </p>
             <p className="mt-1 truncate text-[13px] font-semibold text-white">
-              {safeCurrentItem.episodeTitle}
+              {localizeContent("episode", { id: safeCurrentItem.episodeId, title: safeCurrentItem.episodeTitle }, language).title}
             </p>
             <p className="mt-0.5 truncate text-[11px] text-white/72">
-              {safeCurrentItem.seriesTitle}
+              {localizeContent("series", { id: safeCurrentItem.seriesId, title: safeCurrentItem.seriesTitle }, language).title}
             </p>
           </div>
 

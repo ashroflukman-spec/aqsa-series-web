@@ -1,6 +1,13 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
+import { useLanguage } from "./LanguageProvider";
+
+const NAV_COPY = {
+  ms: { home: "Utama", library: "Pustaka", videos: "Video", saved: "Disimpan", settings: "Tetapan", navigation: "Navigasi utama" },
+  en: { home: "Home", library: "Library", videos: "Videos", saved: "Saved", settings: "Settings", navigation: "Main navigation" },
+  ar: { home: "الرئيسية", library: "المكتبة", videos: "الفيديو", saved: "المحفوظات", settings: "الإعدادات", navigation: "التنقل الرئيسي" },
+} as const;
 
 function HomeIcon({ active }: { active: boolean }) {
   return (
@@ -121,6 +128,8 @@ function SettingsIcon({ active }: { active: boolean }) {
 export default function BottomNav() {
   const router = useRouter();
   const pathname = usePathname();
+  const { language } = useLanguage();
+  const copy = NAV_COPY[language];
 
   const hiddenOnRoutes = [
     "/admin",
@@ -137,13 +146,13 @@ export default function BottomNav() {
 
   const items = [
     {
-      label: "Home",
+      label: copy.home,
       href: "/",
       active: pathname === "/",
       icon: HomeIcon,
     },
     {
-      label: "Library",
+      label: copy.library,
       href: "/library",
       active:
         pathname.startsWith("/library") ||
@@ -152,19 +161,19 @@ export default function BottomNav() {
       icon: LibraryIcon,
     },
     {
-      label: "Videos",
+      label: copy.videos,
       href: "/videos",
       active: pathname.startsWith("/videos"),
       icon: VideoIcon,
     },
     {
-      label: "Saved",
+      label: copy.saved,
       href: "/favorites",
       active: pathname.startsWith("/favorites"),
       icon: HeartIcon,
     },
     {
-      label: "Settings",
+      label: copy.settings,
       href: "/settings",
       active: pathname.startsWith("/settings"),
       icon: SettingsIcon,
@@ -172,7 +181,7 @@ export default function BottomNav() {
   ];
 
   return (
-    <nav aria-label="Navigasi utama" className="fixed bottom-[calc(0.75rem+env(safe-area-inset-bottom))] left-1/2 z-50 w-[calc(100%-1.2rem)] max-w-md -translate-x-1/2">
+    <nav aria-label={copy.navigation} className="fixed bottom-[calc(0.75rem+env(safe-area-inset-bottom))] left-1/2 z-50 w-[calc(100%-1.2rem)] max-w-md -translate-x-1/2">
       <div className="relative overflow-hidden rounded-b-[24px] border border-white/10 bg-[#131722]/82 backdrop-blur-2xl shadow-[0_16px_40px_rgba(0,0,0,0.38)]">
         <div className="absolute inset-0 pointer-events-none">
           <div className="absolute -top-6 left-8 h-14 w-14 rounded-full bg-white/6 blur-2xl" />
@@ -186,7 +195,7 @@ export default function BottomNav() {
 
             return (
               <button
-                key={item.label}
+                key={item.href}
                 type="button"
                 onClick={() => router.push(item.href)}
                 aria-current={item.active ? "page" : undefined}

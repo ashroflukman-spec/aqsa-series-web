@@ -3,6 +3,14 @@
 import Image from "next/image";
 import { Play } from "lucide-react";
 import { useRef, useState } from "react";
+import { useLanguage } from "./LanguageProvider";
+import { localizeContent, type TranslatableContent } from "../lib/localizedContent";
+
+const COPY = {
+  ms: { series: "Siri audio", episode: "Episod", swipe: "Leret untuk lihat", viewSeries: "Lihat siri", listen: "Dengar episod", seriesCard: "Kad siri", of: "daripada", previous: "Kad sebelumnya bagi", next: "Kad seterusnya bagi", openSeries: "Buka siri", openEpisode: "Buka episod", carousel: "Kad siri dan episod" },
+  en: { series: "Audio series", episode: "Episode", swipe: "Swipe to explore", viewSeries: "View series", listen: "Listen to episode", seriesCard: "Series card", of: "of", previous: "Previous card for", next: "Next card for", openSeries: "Open series", openEpisode: "Open episode", carousel: "Series and episode cards" },
+  ar: { series: "سلسلة صوتية", episode: "الحلقة", swipe: "اسحب لاستكشاف الحلقات", viewSeries: "عرض السلسلة", listen: "استمع إلى الحلقة", seriesCard: "بطاقة السلسلة", of: "من", previous: "البطاقة السابقة في", next: "البطاقة التالية في", openSeries: "افتح السلسلة", openEpisode: "افتح الحلقة", carousel: "بطاقات السلسلة والحلقات" },
+} as const;
 
 export type CarouselEpisode = {
   id: string;
@@ -11,6 +19,7 @@ export type CarouselEpisode = {
   coverUrl?: string;
   imageUrl?: string;
   durationSeconds?: number;
+  translations?: TranslatableContent["translations"];
 };
 
 type Props = {
@@ -18,6 +27,7 @@ type Props = {
     id: string;
     title: string;
     coverUrl: string;
+    translations?: TranslatableContent["translations"];
   };
   speakerName: string;
   episodes: CarouselEpisode[];
@@ -39,6 +49,9 @@ export default function SeriesEpisodeCarousel({
   onOpenSeries,
   onOpenEpisode,
 }: Props) {
+  const { language } = useLanguage();
+  const copy = COPY[language];
+  const localizedSeries = localizeContent("series", series, language);
   const scrollerRef = useRef<HTMLDivElement>(null);
   const pointerStartXRef = useRef<number | null>(null);
   const suppressClickRef = useRef(false);
@@ -79,9 +92,10 @@ export default function SeriesEpisodeCarousel({
   }
 
   return (
-    <section aria-label={`Siri ${series.title}`}>
+    <section aria-label={`${copy.series} ${localizedSeries.title}`}>
       <div
         ref={scrollerRef}
+        dir="ltr"
         onScroll={handleScroll}
         onPointerDown={(event) => {
           pointerStartXRef.current = event.clientX;
@@ -115,14 +129,15 @@ export default function SeriesEpisodeCarousel({
         onDragStart={(event) => event.preventDefault()}
         role="region"
         aria-roledescription="carousel"
-        aria-label={`Kad siri dan episod ${series.title}`}
+        aria-label={`${copy.carousel} ${localizedSeries.title}`}
         tabIndex={0}
         className="-mx-6 flex snap-x snap-mandatory scroll-px-6 gap-4 overflow-x-auto px-6 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         <button
           type="button"
           onClick={onOpenSeries}
-          aria-label={`Buka siri ${series.title}`}
+          aria-label={`${copy.openSeries} ${localizedSeries.title}`}
+          dir={language === "ar" ? "rtl" : "ltr"}
           className="group w-[92%] shrink-0 snap-start overflow-hidden rounded-[26px] border border-white/10 bg-white/[0.04] text-left shadow-[0_14px_40px_rgba(0,0,0,0.22)] transition duration-300 hover:border-white/15 hover:bg-white/[0.06] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D4AF37]"
         >
           <div className="relative h-48 overflow-hidden bg-gradient-to-br from-[#20252f] to-[#12151b]">
@@ -139,24 +154,25 @@ export default function SeriesEpisodeCarousel({
             )}
             <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent" />
             <span className="absolute left-4 top-4 rounded-full border border-white/20 bg-black/40 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-white backdrop-blur">
-              Siri audio
+              {copy.series}
             </span>
           </div>
           <div className="flex min-h-[144px] flex-col p-4">
             <span className="line-clamp-2 text-[19px] font-semibold leading-[1.28] text-white">
-              {series.title}
+              {localizedSeries.title}
             </span>
             <span className="mt-1.5 line-clamp-1 text-sm text-white/50">
-              Penyampai · {speakerName}
+              {language === "ms" ? "Penyampai" : language === "en" ? "Speaker" : "المتحدث"} · {speakerName}
             </span>
             <span className="mt-auto flex items-center justify-between pt-4 text-xs font-medium text-[#E8D28A]">
-              <span>{episodes.length > 0 ? `${episodes.length} episod · Leret untuk lihat` : "Lihat siri"}</span>
+              <span>{episodes.length > 0 ? `${episodes.length} ${copy.episode.toLowerCase()} · ${copy.swipe}` : copy.viewSeries}</span>
               <span aria-hidden="true">→</span>
             </span>
           </div>
         </button>
 
         {episodes.map((episode, index) => {
+          const localizedEpisode = localizeContent("episode", episode, language);
           const coverUrl = episode.imageUrl || episode.coverUrl || series.coverUrl;
           const duration = formatDuration(episode.durationSeconds);
 
@@ -165,7 +181,8 @@ export default function SeriesEpisodeCarousel({
               key={episode.id}
               type="button"
               onClick={() => onOpenEpisode(episode)}
-              aria-label={`Buka episod ${index + 1}: ${episode.title}`}
+              aria-label={`${copy.openEpisode} ${index + 1}: ${localizedEpisode.title}`}
+              dir={language === "ar" ? "rtl" : "ltr"}
               className="group w-[92%] shrink-0 snap-start overflow-hidden rounded-[26px] border border-white/10 bg-white/[0.04] text-left shadow-[0_14px_40px_rgba(0,0,0,0.22)] transition duration-300 hover:border-white/15 hover:bg-white/[0.06] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D4AF37]"
             >
               <div className="relative h-48 overflow-hidden bg-gradient-to-br from-[#20252f] to-[#12151b]">
@@ -182,7 +199,7 @@ export default function SeriesEpisodeCarousel({
                 )}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/15 to-black/20" />
                 <span className="absolute left-4 top-4 rounded-full border border-[#D4AF37]/35 bg-black/50 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#E8D28A] backdrop-blur">
-                  Episod {index + 1}
+                  {copy.episode} {index + 1}
                 </span>
                 <span
                   aria-hidden="true"
@@ -194,13 +211,13 @@ export default function SeriesEpisodeCarousel({
               </div>
               <div className="flex min-h-[144px] flex-col p-4">
                 <span className="line-clamp-2 text-[19px] font-semibold leading-[1.28] text-white">
-                  {episode.title}
+                  {localizedEpisode.title}
                 </span>
                 <span className="mt-1.5 line-clamp-1 text-sm text-white/50">
-                  {series.title}
+                  {localizedSeries.title}
                 </span>
                 <span className="mt-auto flex items-center justify-between pt-4 text-xs font-medium text-[#E8D28A]">
-                  <span>Dengar episod</span>
+                  <span>{copy.listen}</span>
                   {duration && <span className="text-white/50">{duration}</span>}
                 </span>
               </div>
@@ -212,14 +229,14 @@ export default function SeriesEpisodeCarousel({
       {slideCount > 1 && (
         <div className="mt-3 flex items-center justify-between px-1">
           <span className="text-xs text-white/45" aria-live="polite">
-            {activeSlide === 0 ? "Kad siri" : `Episod ${activeSlide} daripada ${episodes.length}`}
+            {activeSlide === 0 ? copy.seriesCard : `${copy.episode} ${activeSlide} ${copy.of} ${episodes.length}`}
           </span>
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={() => scrollToSlide(activeSlide - 1)}
               disabled={activeSlide === 0}
-              aria-label={`Kad sebelumnya bagi ${series.title}`}
+              aria-label={`${copy.previous} ${localizedSeries.title}`}
               className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/[0.05] text-lg text-white disabled:opacity-30 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D4AF37]"
             >
               ←
@@ -228,7 +245,7 @@ export default function SeriesEpisodeCarousel({
               type="button"
               onClick={() => scrollToSlide(activeSlide + 1)}
               disabled={activeSlide === slideCount - 1}
-              aria-label={`Kad seterusnya bagi ${series.title}`}
+              aria-label={`${copy.next} ${localizedSeries.title}`}
               className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/[0.05] text-lg text-white disabled:opacity-30 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D4AF37]"
             >
               →

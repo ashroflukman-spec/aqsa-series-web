@@ -6,6 +6,14 @@ import { collection, getDocs, query } from "firebase/firestore";
 import { Share2 } from "lucide-react";
 import { db } from "../../lib/firebase";
 import PremiumShareModal from "../../components/PremiumShareModal";
+import { useLanguage } from "../../components/LanguageProvider";
+import { videoCategoryLabel } from "../../lib/videoCategory";
+
+const COPY = {
+  ms: { back: "Kembali", title: "Pustaka Video", subtitle: "Tonton video YouTube pilihan terus dalam aplikasi", search: "Cari video, penyampai atau kategori...", categories: "Kategori video", all: "Semua", loading: "Sedang memuatkan video...", failed: "Gagal memuatkan video.", share: "Kongsi video", speaker: "Penyampai", unknown: "Tidak dinyatakan", show: "Lihat Penerangan", hide: "Sorok Penerangan", empty: "Tiada video dijumpai.", thumbnail: "Tiada imej kecil" },
+  en: { back: "Back", title: "Video Library", subtitle: "Watch selected YouTube videos here", search: "Search videos, speakers or categories...", categories: "Video categories", all: "All", loading: "Loading videos...", failed: "Unable to load videos.", share: "Share video", speaker: "Speaker", unknown: "Not specified", show: "Show description", hide: "Hide description", empty: "No videos found.", thumbnail: "No thumbnail" },
+  ar: { back: "رجوع", title: "مكتبة الفيديو", subtitle: "شاهد مقاطع مختارة من يوتيوب هنا", search: "ابحث عن فيديو أو متحدث أو فئة...", categories: "فئات الفيديو", all: "الكل", loading: "جارٍ تحميل الفيديوهات...", failed: "تعذّر تحميل الفيديوهات.", share: "مشاركة الفيديو", speaker: "المتحدث", unknown: "غير مذكور", show: "عرض الوصف", hide: "إخفاء الوصف", empty: "لم يُعثر على فيديوهات.", thumbnail: "لا توجد صورة مصغرة" },
+} as const;
 
 type VideoItem = {
   id: string;
@@ -58,6 +66,8 @@ function getYouTubeThumbnail(youtubeId: string) {
 }
 
 function VideosPageContent() {
+  const { language } = useLanguage();
+  const copy = COPY[language];
   const router = useRouter();
   const searchParams = useSearchParams();
   const selectedVideoId = searchParams.get("video");
@@ -111,8 +121,8 @@ function VideosPageContent() {
 
         setVideos(data);
 
-      } catch (err: unknown) {
-        setError(err instanceof Error ? err.message : "Gagal memuatkan video.");
+      } catch {
+        setError("failed");
       } finally {
         setLoading(false);
       }
@@ -154,7 +164,8 @@ function VideosPageContent() {
         normalized === "" ||
         video.title.toLowerCase().includes(normalized) ||
         video.speaker.toLowerCase().includes(normalized) ||
-        video.category.toLowerCase().includes(normalized);
+        video.category.toLowerCase().includes(normalized) ||
+        videoCategoryLabel(video.category, language).toLowerCase().includes(normalized);
 
       return matchesCategory && matchesSearch;
     })
@@ -168,7 +179,7 @@ function VideosPageContent() {
 
       return bTime - aTime;
     });
-}, [videos, search, activeCategory]);
+}, [videos, search, activeCategory, language]);
 
   function selectCategory(category: string) {
     setActiveCategory(category);
@@ -228,13 +239,13 @@ function VideosPageContent() {
           onClick={() => router.push("/")}
           className="mb-6 text-sm text-gray-400"
         >
-          ← Kembali
+          {language === "ar" ? "→" : "←"} {copy.back}
         </button>
 
         <div className="mb-8 rounded-[28px] border border-white/10 bg-white/[0.04] px-5 py-6 shadow-[0_20px_60px_rgba(0,0,0,0.28)] backdrop-blur-xl">
-          <h1 className="text-2xl font-bold">Video Library</h1>
+          <h1 className="text-2xl font-bold">{copy.title}</h1>
           <p className="mt-2 text-sm text-gray-400">
-            Tonton video YouTube pilihan terus dalam app
+            {copy.subtitle}
           </p>
 
           <div className="mt-5">
@@ -242,13 +253,13 @@ function VideosPageContent() {
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Cari video, penyampai atau kategori..."
+              placeholder={copy.search}
               className="w-full rounded-full border border-white/10 bg-[#16191f] px-5 py-3.5 text-sm text-white shadow-inner outline-none placeholder:text-gray-500 focus:border-[#7A1F2B] focus:ring-2 focus:ring-[#7A1F2B]/20"
             />
           </div>
         </div>
 
-        <div className="-mx-6 mb-6 overflow-x-auto px-6 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="group" aria-label="Kategori video">
+        <div className="-mx-6 mb-6 overflow-x-auto px-6 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="group" aria-label={copy.categories}>
           <div className="flex w-max min-w-full gap-2">
             {categories.map((category) => {
               const active = activeCategory === category;
@@ -269,7 +280,7 @@ function VideosPageContent() {
                         : "cursor-not-allowed border border-white/10 bg-white/[0.04] text-gray-500"
                   }`}
                 >
-                  {category}
+                  {videoCategoryLabel(category, language)}
                 </button>
               );
             })}
@@ -278,13 +289,13 @@ function VideosPageContent() {
 
         {loading && (
           <div className="rounded-2xl bg-[#1f232b] p-5 text-sm text-gray-300">
-            Sedang memuatkan video...
+            {copy.loading}
           </div>
         )}
 
         {!loading && error && (
           <div className="rounded-2xl border border-red-500/30 bg-red-950/40 p-5 text-sm text-red-200">
-            {error}
+            {copy.failed}
           </div>
         )}
 
@@ -304,7 +315,7 @@ function VideosPageContent() {
   <div className="mb-3 flex items-start justify-between gap-3">
     <div className="min-w-0">
       <span className="inline-flex rounded-full border border-[#D4AF37]/30 bg-[#D4AF37]/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#E8D28A]">
-        {activeVideo.category}
+        {videoCategoryLabel(activeVideo.category, language)}
       </span>
 
       <h2 className="mt-3 text-lg font-semibold leading-snug">
@@ -316,14 +327,14 @@ function VideosPageContent() {
       type="button"
       onClick={() => setShareOpen(true)}
       className="mt-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[#7A1F2B]/60 bg-[#7A1F2B]/20 text-white shadow-[0_0_24px_rgba(122,31,43,0.35)] transition hover:scale-105 hover:bg-[#7A1F2B]/35"
-      aria-label="Kongsi video"
+      aria-label={copy.share}
     >
       <Share2 size={19} />
     </button>
   </div>
 
               <p className="mt-2 text-sm text-white/55">
-                Penyampai · {activeVideo.speaker || "Tidak dinyatakan"}
+                {copy.speaker} · {activeVideo.speaker || copy.unknown}
               </p>
 
               {activeVideo.description && (
@@ -333,7 +344,7 @@ function VideosPageContent() {
       onClick={() => setShowDescription((prev) => !prev)}
       className="text-sm font-medium text-white/65 transition hover:text-white"
     >
-      {showDescription ? "Sorok Penerangan" : "Lihat Penerangan"}
+      {showDescription ? copy.hide : copy.show}
     </button>
 
     {showDescription && (
@@ -349,7 +360,7 @@ function VideosPageContent() {
 
         {!loading && !error && filteredVideos.length === 0 && (
           <div className="rounded-2xl bg-[#1f232b] p-5 text-sm text-gray-400">
-            Tiada video dijumpai.
+            {copy.empty}
           </div>
         )}
 
@@ -361,7 +372,7 @@ function VideosPageContent() {
           <div className="mb-4 flex items-center justify-between">
             <div>
               <h3 className="text-[13px] font-semibold uppercase tracking-[0.22em] text-white/55">
-                {category}
+                {videoCategoryLabel(category, language)}
               </h3>
               <div className="mt-2 h-[2px] w-12 rounded-full bg-[#7A1F2B]" />
             </div>
@@ -398,7 +409,7 @@ function VideosPageContent() {
                         />
                       ) : (
                         <div className="flex h-full w-full items-center justify-center text-xs text-gray-500">
-                          Tiada Thumbnail
+                          {copy.thumbnail}
                         </div>
                       )}
 
@@ -421,7 +432,7 @@ function VideosPageContent() {
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
                         <span className="rounded-full border border-[#D4AF37]/25 bg-[#D4AF37]/10 px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.14em] text-[#E8D28A]">
-  {video.category}
+  {videoCategoryLabel(video.category, language)}
 </span>
                       </div>
 
@@ -430,7 +441,7 @@ function VideosPageContent() {
                       </p>
 
                       <p className="mt-2 text-sm text-white/45">
-                        {video.speaker || "Tidak dinyatakan"}
+                        {video.speaker || copy.unknown}
                       </p>
                     </div>
                   </div>
@@ -469,7 +480,7 @@ function VideosPageContent() {
                   />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center text-xs text-gray-500">
-                    Tiada Thumbnail
+                    {copy.thumbnail}
                   </div>
                 )}
 
@@ -492,7 +503,7 @@ function VideosPageContent() {
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <span className="rounded-full border border-[#D4AF37]/25 bg-[#D4AF37]/10 px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.14em] text-[#E8D28A]">
-  {video.category}
+  {videoCategoryLabel(video.category, language)}
 </span>
                 </div>
 
@@ -501,7 +512,7 @@ function VideosPageContent() {
                 </p>
 
                 <p className="mt-2 text-sm text-white/45">
-                  {video.speaker || "Tidak dinyatakan"}
+                  {video.speaker || copy.unknown}
                 </p>
               </div>
             </div>

@@ -5,6 +5,14 @@ import { useParams, useRouter } from "next/navigation";
 import { collection, doc, getDoc, getDocs } from "firebase/firestore";
 import { db } from "../../../lib/firebase";
 import { useAudio } from "../../../components/AudioProvider";
+import { useLanguage } from "../../../components/LanguageProvider";
+import { localizeContent, type TranslatableContent } from "../../../lib/localizedContent";
+
+const COPY = {
+  ms: { back: "Kembali", loading: "Sedang memuatkan siri...", missing: "Siri tidak dijumpai", episodes: "episod", noDescription: "Tiada huraian siri.", speaker: "Penyampai", unknownSpeaker: "Penyampai tidak diketahui", originalWork: "Karya Asal", showInfo: "Tekan untuk lihat maklumat karya", hideInfo: "Tekan untuk sembunyikan maklumat karya", noCover: "Tiada kulit buku", title: "Judul", author: "Penulis Asal", translator: "Penterjemah", publisher: "Penerbit", originalLanguage: "Bahasa Asal", noEpisodes: "Belum ada episod diterbitkan untuk siri ini.", originalContent: "Huraian dalam bahasa asal" },
+  en: { back: "Back", loading: "Loading series...", missing: "Series not found", episodes: "episodes", noDescription: "No series description.", speaker: "Speaker", unknownSpeaker: "Unknown speaker", originalWork: "Original Work", showInfo: "Tap to view work details", hideInfo: "Tap to hide work details", noCover: "No cover", title: "Title", author: "Original Author", translator: "Translator", publisher: "Publisher", originalLanguage: "Original Language", noEpisodes: "No published episodes in this series yet.", originalContent: "Description shown in its original language" },
+  ar: { back: "رجوع", loading: "جارٍ تحميل السلسلة...", missing: "لم يُعثر على السلسلة", episodes: "حلقات", noDescription: "لا يوجد وصف للسلسلة.", speaker: "المتحدث", unknownSpeaker: "متحدث غير معروف", originalWork: "العمل الأصلي", showInfo: "اضغط لعرض تفاصيل العمل", hideInfo: "اضغط لإخفاء تفاصيل العمل", noCover: "لا غلاف", title: "العنوان", author: "المؤلف الأصلي", translator: "المترجم", publisher: "الناشر", originalLanguage: "اللغة الأصلية", noEpisodes: "لا توجد حلقات منشورة في هذه السلسلة بعد.", originalContent: "يُعرض الوصف بلغته الأصلية" },
+} as const;
 
 type SeriesItem = {
   id: string;
@@ -21,6 +29,7 @@ type SeriesItem = {
   originalLanguage?: string;
   originalWorkCoverUrl?: string;
   isDeleted?: boolean;
+  translations?: TranslatableContent["translations"];
 };
 
 type EpisodeItem = {
@@ -36,6 +45,7 @@ type EpisodeItem = {
   originalChapterLabel?: string;
   isPublished: boolean;
   isDeleted?: boolean;
+  translations?: TranslatableContent["translations"];
 };
 
 type SpeakerItem = {
@@ -58,6 +68,8 @@ export default function SeriesPage() {
   const params = useParams();
   const router = useRouter();
   const { playEpisode } = useAudio();
+  const { language } = useLanguage();
+  const copy = COPY[language];
 
   const [series, setSeries] = useState<SeriesItem | null>(null);
   const [episodes, setEpisodes] = useState<EpisodeItem[]>([]);
@@ -75,7 +87,7 @@ export default function SeriesPage() {
         const seriesSnap = await getDoc(seriesRef);
 
         if (!seriesSnap.exists()) {
-          setError("Series tidak dijumpai");
+          setError("missing");
           setLoading(false);
           return;
         }
@@ -95,10 +107,11 @@ export default function SeriesPage() {
   originalLanguage: seriesSnap.data().originalLanguage ?? "",
   originalWorkCoverUrl: seriesSnap.data().originalWorkCoverUrl ?? "",
   isDeleted: seriesSnap.data().isDeleted ?? false,
+  translations: seriesSnap.data().translations ?? undefined,
 };
 
         if (seriesData.isDeleted === true || seriesData.isPublished !== true) {
-          setError("Series tidak dijumpai");
+          setError("missing");
           setLoading(false);
           return;
         }
@@ -121,6 +134,7 @@ export default function SeriesPage() {
             originalChapterLabel: docItem.data().originalChapterLabel ?? "",
             isPublished: docItem.data().isPublished ?? false,
             isDeleted: docItem.data().isDeleted ?? false,
+            translations: docItem.data().translations ?? undefined,
           }))
           .filter(
             (ep) =>
@@ -162,8 +176,8 @@ export default function SeriesPage() {
         }
 
         setSpeakerMap(nextSpeakerMap);
-      } catch (err: any) {
-        setError(err?.message || "Gagal memuatkan series");
+      } catch {
+        setError("loading");
       } finally {
         setLoading(false);
       }
@@ -181,7 +195,7 @@ export default function SeriesPage() {
   !!series?.originalWorkCoverUrl;
 
   function getSpeakerName(speakerId: string) {
-    return speakerMap[speakerId] || speakerId || "Penyampai tidak diketahui";
+    return speakerMap[speakerId] || speakerId || copy.unknownSpeaker;
   }
 
   function buildQueue() {
@@ -225,18 +239,18 @@ async function handleOpenEpisode(ep: EpisodeItem) {
           onClick={() => router.push("/")}
           className="mb-6 text-sm text-gray-400"
         >
-          ← Kembali
+          {language === "ar" ? "→" : "←"} {copy.back}
         </button>
 
         {loading && (
           <div className="rounded-2xl bg-[#1f232b] p-5 text-sm text-gray-300">
-            Sedang memuatkan series...
+            {copy.loading}
           </div>
         )}
 
         {!loading && error && (
           <div className="rounded-2xl border border-red-500/30 bg-red-950/40 p-5 text-sm text-red-200">
-            {error}
+            {error === "missing" ? copy.missing : copy.loading}
           </div>
         )}
 
@@ -254,24 +268,28 @@ async function handleOpenEpisode(ep: EpisodeItem) {
               <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-black/15" />
 
               <div className="absolute inset-x-0 bottom-0 p-5">
-                <p className="text-2xl font-bold leading-tight">{series.title}</p>
+                <p className="text-2xl font-bold leading-tight">{localizeContent("series", series, language).title}</p>
                 <p className="mt-2 text-sm text-gray-200">
-                  {episodes.length} episod
+                  {episodes.length} {copy.episodes}
                 </p>
               </div>
 
               <div className="absolute top-4 right-4 rounded-full border border-white/15 bg-black/25 px-3 py-1 text-[11px] text-white/90 backdrop-blur">
-                {episodes.length} episod
+                {episodes.length} {copy.episodes}
               </div>
             </div>
 
             <div className="mt-6 mb-8">
               <p className="text-sm text-gray-400">
-                {series.description || "Tiada deskripsi siri."}
+                {localizeContent("series", series, language).description || copy.noDescription}
               </p>
 
+              {series.description && !localizeContent("series", series, language).descriptionTranslated && (
+                <p className="mt-1 text-xs text-[#D4AF37]">{copy.originalContent}</p>
+              )}
+
               <p className="mt-3 text-xs text-gray-500">
-                Penyampai · {getSpeakerName(series.speakerId)}
+                {copy.speaker} · {getSpeakerName(series.speakerId)}
               </p>
 
               {hasOriginalWorkInfo && (
@@ -281,9 +299,9 @@ async function handleOpenEpisode(ep: EpisodeItem) {
                     className="flex w-full items-center justify-between px-5 py-4 text-left transition hover:bg-white/[0.03]"
                   >
                     <div>
-                      <p className="text-sm font-semibold">Karya Asal</p>
+                      <p className="text-sm font-semibold">{copy.originalWork}</p>
                       <p className="mt-1 text-xs text-gray-400">
-                        Tekan untuk {showOriginalWork ? "sembunyikan" : "lihat"} maklumat karya
+                        {showOriginalWork ? copy.hideInfo : copy.showInfo}
                       </p>
                     </div>
 
@@ -303,14 +321,12 @@ async function handleOpenEpisode(ep: EpisodeItem) {
         {series.originalWorkCoverUrl ? (
           <img
             src={series.originalWorkCoverUrl}
-            alt={series.originalWorkTitle || "Karya Asal"}
+            alt={series.originalWorkTitle || copy.originalWork}
             className="h-32 w-24 rounded-2xl border border-white/10 object-cover shadow-[0_10px_24px_rgba(0,0,0,0.25)]"
           />
         ) : (
           <div className="flex h-32 w-24 items-center justify-center rounded-2xl border border-white/10 bg-black/20 text-center text-[10px] uppercase tracking-wider text-gray-500">
-            Tiada
-            <br />
-            Cover
+            {copy.noCover}
           </div>
         )}
       </div>
@@ -319,7 +335,7 @@ async function handleOpenEpisode(ep: EpisodeItem) {
         {series.originalWorkTitle && (
           <div className="rounded-2xl border border-white/5 bg-black/20 px-4 py-3">
             <p className="mb-1 text-[11px] uppercase tracking-wider text-gray-500">
-              Judul
+              {copy.title}
             </p>
             <p className="text-sm leading-6 text-gray-200">
               {series.originalWorkTitle}
@@ -330,7 +346,7 @@ async function handleOpenEpisode(ep: EpisodeItem) {
         {series.originalWorkAuthor && (
           <div className="rounded-2xl border border-white/5 bg-black/20 px-4 py-3">
             <p className="mb-1 text-[11px] uppercase tracking-wider text-gray-500">
-              Penulis Asal
+              {copy.author}
             </p>
             <p className="text-sm leading-6 text-gray-200">
               {series.originalWorkAuthor}
@@ -341,7 +357,7 @@ async function handleOpenEpisode(ep: EpisodeItem) {
         {series.originalWorkTranslator && (
           <div className="rounded-2xl border border-white/5 bg-black/20 px-4 py-3">
             <p className="mb-1 text-[11px] uppercase tracking-wider text-gray-500">
-              Penterjemah
+              {copy.translator}
             </p>
             <p className="text-sm leading-6 text-gray-200">
               {series.originalWorkTranslator}
@@ -352,7 +368,7 @@ async function handleOpenEpisode(ep: EpisodeItem) {
         {series.originalWorkPublisher && (
           <div className="rounded-2xl border border-white/5 bg-black/20 px-4 py-3">
             <p className="mb-1 text-[11px] uppercase tracking-wider text-gray-500">
-              Penerbit
+              {copy.publisher}
             </p>
             <p className="text-sm leading-6 text-gray-200">
               {series.originalWorkPublisher}
@@ -363,7 +379,7 @@ async function handleOpenEpisode(ep: EpisodeItem) {
         {series.originalLanguage && (
           <div className="rounded-2xl border border-white/5 bg-black/20 px-4 py-3">
             <p className="mb-1 text-[11px] uppercase tracking-wider text-gray-500">
-              Bahasa Asal
+              {copy.originalLanguage}
             </p>
             <p className="text-sm leading-6 text-gray-200">
               {series.originalLanguage}
@@ -381,17 +397,17 @@ async function handleOpenEpisode(ep: EpisodeItem) {
             <div className="space-y-3">
               {episodes.length === 0 && (
                 <div className="rounded-2xl bg-[#1f232b] p-5 text-sm text-gray-400">
-                  Belum ada episod diterbitkan untuk series ini.
+                  {copy.noEpisodes}
                 </div>
               )}
 
-              {episodes.map((ep, index) => (
+              {episodes.map((ep) => (
                 <div
                   key={ep.id}
                   onClick={() => handleOpenEpisode(ep)}
                   className="group relative cursor-pointer rounded-2xl border border-white/10 bg-[#1f232b] p-4 shadow-[0_10px_28px_rgba(0,0,0,0.18)] transition duration-300 hover:-translate-y-[2px] hover:border-white/15 hover:bg-[#262b35] hover:shadow-[0_16px_40px_rgba(0,0,0,0.26),0_0_0_1px_rgba(212,175,55,0.06),0_0_28px_rgba(212,175,55,0.08)] active:scale-[0.985] active:-translate-y-[1px] active:border-white/15 active:bg-[#262b35] active:shadow-[0_16px_36px_rgba(0,0,0,0.24),0_0_0_1px_rgba(212,175,55,0.05),0_0_22px_rgba(212,175,55,0.08)]"
                 >
-                  <div className="absolute right-4 top-1/2 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border border-white/12 bg-white/[0.025] shadow-[0_8px_22px_rgba(0,0,0,0.16)] backdrop-blur-2xl transition duration-300 group-hover:scale-[1.06] group-hover:border-white/18 group-hover:bg-white/[0.05] group-active:scale-[1.04] group-active:border-white/20 group-active:bg-white/[0.06]">
+                  <div className="absolute end-4 top-1/2 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border border-white/12 bg-white/[0.025] shadow-[0_8px_22px_rgba(0,0,0,0.16)] backdrop-blur-2xl transition duration-300 group-hover:scale-[1.06] group-hover:border-white/18 group-hover:bg-white/[0.05] group-active:scale-[1.04] group-active:border-white/20 group-active:bg-white/[0.06]">
   <div className="absolute inset-[1px] rounded-full bg-gradient-to-br from-white/[0.14] via-white/[0.04] to-transparent" />
   <div className="absolute inset-[1px] rounded-full shadow-[inset_0_1px_0_rgba(255,255,255,0.18),inset_0_-10px_18px_rgba(255,255,255,0.015)]" />
   <div className="absolute left-[9px] top-[7px] h-3.5 w-5 rounded-full bg-white/[0.10] blur-[2px]" />
@@ -405,10 +421,10 @@ async function handleOpenEpisode(ep: EpisodeItem) {
   </svg>
 </div>
 
-                  <div className="flex items-start justify-between gap-4 pr-12">
+                  <div className="flex items-start justify-between gap-4 pe-12">
                     <div className="min-w-0">
                       <p className="truncate text-sm font-semibold transition duration-300 group-hover:bg-gradient-to-r group-hover:from-[#F6E6B4] group-hover:via-[#E2C15C] group-hover:to-[#C89A2B] group-hover:bg-clip-text group-hover:text-transparent">
-  {ep.title}
+  {localizeContent("episode", ep, language).title}
 </p>
                       <p className="mt-1 text-xs text-gray-400">
   {formatDuration(ep.durationSeconds || 0)}

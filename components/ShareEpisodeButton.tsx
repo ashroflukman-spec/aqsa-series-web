@@ -2,6 +2,13 @@
 
 import { useState } from "react";
 import { Copy, Facebook, Send, Share2, X } from "lucide-react";
+import { useLanguage } from "./LanguageProvider";
+
+const COPY = {
+  ms: { tagline: "Siri Pengetahuan Baitulmaqdis kita bermula di sini.", listen: "Dengar di Aqsa Series:", share: "Kongsi Episod", copy: "Salin", copied: "Disalin", more: "Lainnya", hint: "Pautan ini akan membawa pengguna terus ke halaman episod audio di Aqsa Series." },
+  en: { tagline: "Explore Baitulmaqdis with Aqsa Series.", listen: "Listen on Aqsa Series:", share: "Share Episode", copy: "Copy", copied: "Copied", more: "More", hint: "This link opens the audio episode on Aqsa Series." },
+  ar: { tagline: "اكتشف بيت المقدس مع Aqsa Series.", listen: "استمع عبر Aqsa Series:", share: "مشاركة الحلقة", copy: "نسخ", copied: "تم النسخ", more: "المزيد", hint: "يفتح هذا الرابط الحلقة الصوتية على Aqsa Series." },
+} as const;
 
 type Props = {
   title: string;
@@ -16,12 +23,14 @@ export default function ShareEpisodeButton({
 }: Props) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const { language } = useLanguage();
+  const copy = COPY[language];
 
-  const tagline = "Siri Pengetahuan Baitulmaqdis kita bermula di sini.";
+  const tagline = copy.tagline;
 
   const shareText = `${title}${
     description ? `\n\n${description}` : ""
-  }\n\n${tagline}\n\nDengar di Aqsa Series:\n${shareUrl}`;
+  }\n\n${tagline}\n\n${copy.listen}\n${shareUrl}`;
 
   const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
 
@@ -60,7 +69,7 @@ export default function ShareEpisodeButton({
         <button
           type="button"
           onClick={() => setOpen(true)}
-          aria-label="Kongsi episod"
+          aria-label={copy.share}
           className="flex h-14 w-14 items-center justify-center rounded-full border border-[#7A1F2B]/70 bg-[#7A1F2B]/20 text-white shadow-[0_0_24px_rgba(122,31,43,0.35)] transition duration-300 hover:scale-105 hover:bg-[#7A1F2B]/35 active:scale-95"
         >
           <Share2 size={21} />
@@ -75,7 +84,7 @@ export default function ShareEpisodeButton({
                 <p className="text-xs uppercase tracking-[0.22em] text-[#D4AF37]">
                   Aqsa Series
                 </p>
-                <h2 className="mt-1 text-lg font-bold">Kongsi Episod</h2>
+                <h2 className="mt-1 text-lg font-bold">{copy.share}</h2>
               </div>
 
               <button
@@ -106,7 +115,7 @@ export default function ShareEpisodeButton({
                 <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-2xl bg-white/10">
                   <Copy size={20} />
                 </div>
-                <span>{copied ? "Copied" : "Salin"}</span>
+                <span>{copied ? copy.copied : copy.copy}</span>
               </button>
 
               <a
@@ -153,13 +162,12 @@ export default function ShareEpisodeButton({
                 <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-2xl bg-white/10">
                   <Share2 size={20} />
                 </div>
-                <span>Lainnya</span>
+                <span>{copy.more}</span>
               </button>
             </div>
 
             <p className="mt-5 rounded-2xl bg-white/[0.04] p-3 text-xs leading-relaxed text-white/40">
-              Pautan ini akan membawa pengguna terus ke halaman episod audio di
-              Aqsa Series.
+              {copy.hint}
             </p>
           </div>
         </div>
