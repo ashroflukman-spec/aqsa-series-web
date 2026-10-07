@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 
-type Platform = "unknown" | "ios-safari" | "ios-other" | "android" | "other";
+type Platform = "unknown" | "ios-safari" | "ios-chrome" | "ios-other" | "android" | "other";
 
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
@@ -26,7 +26,10 @@ function isInstalled() {
 function detectPlatform(): Platform {
   const ua = navigator.userAgent;
   const ios = /iPad|iPhone|iPod/i.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-  if (ios) return /Safari/i.test(ua) && !/CriOS|FxiOS|EdgiOS|OPiOS|DuckDuckGo|GSA|FBAN|FBAV|Instagram|Line|TikTok|Snapchat/i.test(ua) ? "ios-safari" : "ios-other";
+  if (ios) {
+    if (/CriOS/i.test(ua)) return "ios-chrome";
+    return /Safari/i.test(ua) && !/FxiOS|EdgiOS|OPiOS|DuckDuckGo|GSA|FBAN|FBAV|Instagram|Line|TikTok|Snapchat/i.test(ua) ? "ios-safari" : "ios-other";
+  }
   if (/Android/i.test(ua)) return "android";
   return "other";
 }

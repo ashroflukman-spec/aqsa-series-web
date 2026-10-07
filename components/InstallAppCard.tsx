@@ -1,7 +1,8 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Download, Share2, X } from "lucide-react";
 import { useInstall } from "./InstallProvider";
 import { useLanguage } from "./LanguageProvider";
@@ -9,6 +10,7 @@ import { useLanguage } from "./LanguageProvider";
 const DISMISS_KEY = "aqsa-install-nudge-until";
 const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
 const SITE_URL = "https://www.aqsaseries.com";
+type IosGuideBrowser = "safari" | "chrome" | "other";
 
 const COPY = {
   ms: {
@@ -20,8 +22,14 @@ const COPY = {
     dismiss: "Sembunyikan cadangan",
     installed: "Aqsa Series sudah ada di skrin utama",
     intro: "Ikut langkah ringkas ini untuk menambah ikon Aqsa Series.",
-    iosOther: "Buka alamat ini dalam Safari dahulu:",
+    browser: "Pelayar",
+    safari: "Safari",
+    chrome: "Chrome",
+    otherBrowser: "Pelayar ini",
+    iosOther: "Jika pilihan ini tiada dalam pelayar anda, buka pautan ini di Safari:",
     iosSteps: ["Dalam Safari, tekan Kongsi (atau menu halaman → Kongsi).", "Pilih Tambah ke Skrin Utama.", "Tekan Tambah. Pilih Buka sebagai Aplikasi Web jika pilihan itu muncul."],
+    iosChromeSteps: ["Dalam Chrome, tekan ikon Kongsi di sebelah kanan bar alamat.", "Pilih Tambah ke Skrin Utama.", "Semak nama, kemudian tekan Tambah."],
+    iosOtherSteps: ["Tekan Kongsi dalam pelayar ini.", "Jika ada, pilih Tambah ke Skrin Utama, kemudian Tambah."],
     androidSteps: ["Buka laman ini dalam Chrome dan tekan menu ⋮.", "Pilih Pasang aplikasi atau Tambah ke skrin utama.", "Sahkan Pasang atau Tambah."],
     desktopSteps: ["Buka menu pelayar atau ikon pemasangan di bar alamat.", "Pilih Pasang Aqsa Series dan sahkan."],
     copied: "Pautan disalin",
@@ -36,8 +44,14 @@ const COPY = {
     dismiss: "Hide suggestion",
     installed: "Aqsa Series is already on your Home Screen",
     intro: "Follow these quick steps to add the Aqsa Series icon.",
-    iosOther: "First, open this address in Safari:",
+    browser: "Browser",
+    safari: "Safari",
+    chrome: "Chrome",
+    otherBrowser: "This browser",
+    iosOther: "If this option is missing in your browser, open this link in Safari:",
     iosSteps: ["In Safari, tap Share (or Page Menu → Share).", "Choose Add to Home Screen.", "Tap Add. Select Open as Web App if it appears."],
+    iosChromeSteps: ["In Chrome, tap Share to the right of the address bar.", "Choose Add to Home Screen.", "Check the name, then tap Add."],
+    iosOtherSteps: ["Tap Share in this browser.", "If available, choose Add to Home Screen, then Add."],
     androidSteps: ["Open this site in Chrome and tap the ⋮ menu.", "Choose Install app or Add to Home screen.", "Confirm Install or Add."],
     desktopSteps: ["Open the browser menu or the install icon in the address bar.", "Choose Install Aqsa Series and confirm."],
     copied: "Link copied",
@@ -52,8 +66,14 @@ const COPY = {
     dismiss: "إخفاء الاقتراح",
     installed: "Aqsa Series موجود بالفعل على الشاشة الرئيسية",
     intro: "اتبع هذه الخطوات لإضافة أيقونة Aqsa Series.",
-    iosOther: "افتح هذا العنوان في Safari أولًا:",
+    browser: "المتصفح",
+    safari: "Safari",
+    chrome: "Chrome",
+    otherBrowser: "هذا المتصفح",
+    iosOther: "إذا لم يظهر هذا الخيار في متصفحك، فافتح الرابط في Safari:",
     iosSteps: ["في Safari، اضغط مشاركة (أو قائمة الصفحة ← مشاركة).", "اختر إضافة إلى الشاشة الرئيسية.", "اضغط إضافة. اختر فتح كتطبيق ويب إذا ظهر الخيار."],
+    iosChromeSteps: ["في Chrome، اضغط رمز المشاركة بجوار شريط العنوان.", "اختر إضافة إلى الشاشة الرئيسية.", "راجع الاسم، ثم اضغط إضافة."],
+    iosOtherSteps: ["اضغط مشاركة في هذا المتصفح.", "إن ظهر الخيار، اختر إضافة إلى الشاشة الرئيسية ثم إضافة."],
     androidSteps: ["افتح الموقع في Chrome واضغط القائمة ⋮.", "اختر تثبيت التطبيق أو إضافة إلى الشاشة الرئيسية.", "أكد التثبيت أو الإضافة."],
     desktopSteps: ["افتح قائمة المتصفح أو رمز التثبيت في شريط العنوان.", "اختر تثبيت Aqsa Series ثم أكد."],
     copied: "تم نسخ الرابط",
@@ -68,6 +88,9 @@ export default function InstallAppCard({ surface }: { surface: "home" | "setting
   const [guideOpen, setGuideOpen] = useState(false);
   const [dismissed, setDismissed] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [iosGuideBrowser, setIosGuideBrowser] = useState<IosGuideBrowser | null>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -78,18 +101,29 @@ export default function InstallAppCard({ surface }: { surface: "home" | "setting
 
   useEffect(() => {
     if (!guideOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    const trigger = triggerRef.current;
+    document.body.style.overflow = "hidden";
+    dialogRef.current?.focus();
     const onEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape") setGuideOpen(false);
     };
     window.addEventListener("keydown", onEscape);
-    return () => window.removeEventListener("keydown", onEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", onEscape);
+      trigger?.focus();
+    };
   }, [guideOpen]);
 
   if (platform === "unknown") return null;
   if (surface === "home" && (installed || dismissed || platform === "other")) return null;
 
-  const steps = platform === "ios-safari" || platform === "ios-other"
-    ? copy.iosSteps
+  const isIos = platform === "ios-safari" || platform === "ios-chrome" || platform === "ios-other";
+  const selectedBrowser = iosGuideBrowser ?? (platform === "ios-chrome" ? "chrome" : platform === "ios-safari" ? "safari" : "other");
+  const steps = isIos && selectedBrowser === "safari" ? copy.iosSteps
+    : isIos && selectedBrowser === "chrome" ? copy.iosChromeSteps
+    : isIos ? copy.iosOtherSteps
     : platform === "android" ? copy.androidSteps : copy.desktopSteps;
 
   async function handleInstall() {
@@ -97,6 +131,7 @@ export default function InstallAppCard({ surface }: { surface: "home" | "setting
       const result = await promptInstall();
       if (result !== "unavailable") return;
     }
+    setIosGuideBrowser(null);
     setGuideOpen(true);
   }
 
@@ -130,16 +165,16 @@ export default function InstallAppCard({ surface }: { surface: "home" | "setting
           </div>
         </div>
         {!installed && (
-          <button type="button" onClick={handleInstall} className="mt-4 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-[#D4AF37]/30 bg-[#7A1F2B] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#8b2533] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E8D28A]">
+          <button ref={triggerRef} type="button" onClick={handleInstall} className="mt-4 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-[#D4AF37]/30 bg-[#7A1F2B] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#8b2533] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E8D28A]">
             {canPrompt ? <Download size={17} /> : <Share2 size={17} />}
             {canPrompt ? copy.install : copy.guide}
           </button>
         )}
       </section>
 
-      {guideOpen && (
-        <div role="presentation" onClick={() => setGuideOpen(false)} className="fixed inset-0 z-[100] flex items-end justify-center bg-black/75 px-3 pb-[calc(1rem+env(safe-area-inset-bottom))] backdrop-blur-sm sm:items-center">
-          <div role="dialog" aria-modal="true" aria-label={copy.title} onClick={(event) => event.stopPropagation()} className="w-full max-w-md rounded-[28px] border border-white/15 bg-[#191c23] p-5 text-white shadow-2xl">
+      {guideOpen && createPortal(
+        <div role="presentation" onClick={() => setGuideOpen(false)} className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/75 px-3 py-[calc(1rem+env(safe-area-inset-top))] backdrop-blur-sm">
+          <div ref={dialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label={copy.title} onClick={(event) => event.stopPropagation()} className="max-h-[85dvh] w-full max-w-md overflow-y-auto rounded-[28px] border border-white/15 bg-[#191c23] p-5 text-white shadow-2xl outline-none">
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-3">
                 <Image src="/icon.png" alt="" width={48} height={48} className="h-12 w-12 rounded-xl" />
@@ -151,11 +186,18 @@ export default function InstallAppCard({ surface }: { surface: "home" | "setting
               <button type="button" onClick={() => setGuideOpen(false)} aria-label={copy.close} className="rounded-full p-2 text-white/60 hover:bg-white/10 hover:text-white"><X size={18} /></button>
             </div>
 
-            {platform === "ios-other" && (
-              <div className="mt-5 rounded-xl border border-[#D4AF37]/20 bg-[#D4AF37]/10 p-3 text-sm">
-                <p>{copy.iosOther}</p>
-                <p className="mt-1 break-all font-medium text-[#E8D28A]" dir="ltr">{SITE_URL}</p>
-                <button type="button" onClick={copyLink} className="mt-3 rounded-lg border border-[#D4AF37]/35 px-3 py-2 text-xs font-semibold text-[#E8D28A]">{copied ? copy.copied : copy.copy}</button>
+            {isIos && (
+              <div className={`mt-5 grid gap-2 ${platform === "ios-other" ? "grid-cols-3" : "grid-cols-2"}`} role="group" aria-label={copy.browser}>
+                {(["safari", "chrome"] as const).map((browser) => (
+                  <button key={browser} type="button" onClick={() => setIosGuideBrowser(browser)} aria-pressed={selectedBrowser === browser} className={`min-h-11 rounded-xl border px-3 py-2 text-sm font-semibold transition ${selectedBrowser === browser ? "border-[#D4AF37]/60 bg-[#7A1F2B] text-white" : "border-white/15 bg-white/5 text-white/70"}`}>
+                    {browser === "safari" ? copy.safari : copy.chrome}
+                  </button>
+                ))}
+                {platform === "ios-other" && (
+                  <button type="button" onClick={() => setIosGuideBrowser("other")} aria-pressed={selectedBrowser === "other"} className={`min-h-11 rounded-xl border px-2 py-2 text-sm font-semibold transition ${selectedBrowser === "other" ? "border-[#D4AF37]/60 bg-[#7A1F2B] text-white" : "border-white/15 bg-white/5 text-white/70"}`}>
+                    {copy.otherBrowser}
+                  </button>
+                )}
               </div>
             )}
 
@@ -167,9 +209,17 @@ export default function InstallAppCard({ surface }: { surface: "home" | "setting
                 </li>
               ))}
             </ol>
+            {isIos && selectedBrowser === "other" && (
+              <div className="mt-5 rounded-xl border border-[#D4AF37]/20 bg-[#D4AF37]/10 p-3 text-sm">
+                <p>{copy.iosOther}</p>
+                <p className="mt-1 break-all font-medium text-[#E8D28A]" dir="ltr">{SITE_URL}</p>
+                <button type="button" onClick={copyLink} className="mt-3 rounded-lg border border-[#D4AF37]/35 px-3 py-2 text-xs font-semibold text-[#E8D28A]">{copied ? copy.copied : copy.copy}</button>
+              </div>
+            )}
             <button type="button" onClick={() => setGuideOpen(false)} className="mt-6 min-h-11 w-full rounded-xl bg-white/10 px-4 py-2.5 text-sm font-semibold text-white">{copy.close}</button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );
