@@ -1,5 +1,5 @@
-const CACHE_NAME = "aqsa-series-v1";
-const APP_SHELL = ["/", "/library", "/favorites", "/settings", "/manifest.webmanifest"];
+const CACHE_NAME = "aqsa-series-v2";
+const APP_SHELL = ["/", "/library", "/favorites", "/settings", "/manifest.webmanifest", "/icon.png", "/apple-icon.png"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(

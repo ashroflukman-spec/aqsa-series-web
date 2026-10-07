@@ -12,6 +12,7 @@ import SeriesEpisodeCarousel, {
 import { useLanguage } from "../components/LanguageProvider";
 import { localizeContent, type TranslatableContent } from "../lib/localizedContent";
 import { videoCategoryLabel } from "../lib/videoCategory";
+import InstallAppCard from "../components/InstallAppCard";
 
 const COPY = {
   ms: { tagline: "Siri Pengetahuan Baitulmaqdis Kita Bermula Di Sini", search: "Cari siri...", admin: "Panel Admin", nowPlaying: "Sedang Dimainkan", item: "item", resume: "Sambung", videoHighlight: "Video Pilihan", seeAll: "Lihat Semua", fullLibrary: "Pustaka Penuh", seeAllVideos: "Lihat Semua Video", videosHint: "Teruskan ke Pustaka Video Aqsa Series", swipeOrTap: "Leret atau tekan", results: "Hasil Carian", popular: "Siri Audio Popular", series: "siri", loading: "Sedang memuatkan kandungan...", noSeries: "Tiada siri dijumpai.", speaker: "Penyampai", unknownSpeaker: "Penyampai tidak diketahui", unspecified: "Tidak dinyatakan" },
@@ -488,6 +489,8 @@ export default function Page() {
             </div>
           </div>
         </div>
+
+        <InstallAppCard surface="home" />
 
         {recentlyPlayed.length > 0 && normalized === "" && (
           <div className="mb-10">

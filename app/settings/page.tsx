@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useLanguage, type AppLanguage } from "../../components/LanguageProvider";
+import InstallAppCard from "../../components/InstallAppCard";
 
 const COPY = {
   ms: {
@@ -215,6 +216,8 @@ export default function SettingsPage() {
               </button>
             </div>
           </div>
+
+          <InstallAppCard surface="settings" />
 
           <div className="rounded-2xl bg-[#14161b] p-5 border border-white/5">
             <p className="text-sm font-semibold mb-2">

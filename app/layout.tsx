@@ -6,6 +6,7 @@ import MiniPlayer from "../components/MiniPlayer";
 import BottomNav from "../components/BottomNav";
 import PWARegister from "../components/PWARegister";
 import { LanguageProvider } from "../components/LanguageProvider";
+import { InstallProvider } from "../components/InstallProvider";
 import type { AppLanguage } from "../components/LanguageProvider";
 import { cookies } from "next/headers";
 
@@ -22,7 +23,7 @@ export const metadata: Metadata = {
 
   icons: {
     icon: "/icon.png",
-    apple: "/icon.png",
+    apple: "/apple-icon.png",
     shortcut: "/icon.png",
   },
 };
@@ -42,14 +43,16 @@ export default async function RootLayout({
     <html lang={language || "ms"} dir={language === "ar" ? "rtl" : "ltr"}>
       <body className="bg-gradient-to-b from-[#0f1115] to-[#1a1d24]">
         <LanguageProvider initialLanguage={language}>
-          <AuthProvider>
-            <AudioProvider>
-              <PWARegister />
-              {children}
-              <MiniPlayer />
-              <BottomNav />
-            </AudioProvider>
-          </AuthProvider>
+          <InstallProvider>
+            <AuthProvider>
+              <AudioProvider>
+                <PWARegister />
+                {children}
+                <MiniPlayer />
+                <BottomNav />
+              </AudioProvider>
+            </AuthProvider>
+          </InstallProvider>
         </LanguageProvider>
       </body>
     </html>
