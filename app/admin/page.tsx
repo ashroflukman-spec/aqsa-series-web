@@ -18,6 +18,7 @@ import { signOut } from "firebase/auth";
 import { collection, getDocs } from "firebase/firestore";
 import { auth, db } from "../../lib/firebase";
 import AdminGuard from "../../components/AdminGuard";
+import VideoLinkMonitor from "../../components/admin/VideoLinkMonitor";
 
 type Stats = {
   speakers: number;
@@ -244,6 +245,8 @@ export default function AdminPage() {
               </div>
             </div>
           </div>
+
+          <VideoLinkMonitor />
 
           <div className="mb-8 rounded-3xl border border-white/10 bg-white/5 backdrop-blur-2xl p-5 shadow-[0_12px_40px_rgba(0,0,0,0.35)] overflow-hidden relative">
             <div className="absolute inset-0 pointer-events-none">

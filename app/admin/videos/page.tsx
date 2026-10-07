@@ -14,19 +14,18 @@ import {
 } from "firebase/firestore";
 import { db } from "../../../lib/firebase";
 import AdminGuard from "../../../components/AdminGuard";
+import { effectiveLinkStatus, type MonitoredVideo } from "../../../lib/videoLinkHealth";
+import type { Timestamp } from "firebase/firestore";
 
-type VideoItem = {
-  id: string;
-  title: string;
+type VideoItem = MonitoredVideo & {
   speaker: string;
   category: string;
   youtubeUrl: string;
-  youtubeId: string;
   description?: string;
   thumbnailUrl?: string;
   sortOrder: number;
   isPinned?: boolean;
-  createdAt?: any;
+  createdAt?: Timestamp | null;
   isPublished: boolean;
   isDeleted?: boolean;
 };
@@ -75,6 +74,7 @@ export default function AdminVideosPage() {
   const [importingMeta, setImportingMeta] = useState(false);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
+  const [healthFilter, setHealthFilter] = useState<"all" | "issue" | "unchecked">("all");
 
   const [editingId, setEditingId] = useState("");
 
@@ -94,6 +94,7 @@ const [sourcePublishedAt, setSourcePublishedAt] = useState("");
 const [sourceThumbnailUrl, setSourceThumbnailUrl] = useState("");
 
   useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("health") === "issue") setHealthFilter("issue");
     loadVideos();
   }, []);
 
@@ -126,13 +127,17 @@ const [sourceThumbnailUrl, setSourceThumbnailUrl] = useState("");
   createdAt: docItem.data().createdAt ?? null,
   isPublished: docItem.data().isPublished ?? false,
   isDeleted: docItem.data().isDeleted ?? false,
+  linkStatus: docItem.data().linkStatus,
+  linkReason: docItem.data().linkReason ?? "",
+  linkCheckedAt: docItem.data().linkCheckedAt ?? null,
+  linkCheckedYoutubeId: docItem.data().linkCheckedYoutubeId ?? "",
 };
         })
         .filter((item) => item.isDeleted !== true);
 
       setVideos(data);
-    } catch (err: any) {
-      setError(err?.message || "Gagal memuatkan senarai video.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Gagal memuatkan senarai video.");
     } finally {
       setLoading(false);
     }
@@ -194,8 +199,8 @@ async function handleImportYouTubeMeta() {
     setSourceThumbnailUrl(data.thumbnailUrl || "");
 
     setMessage("Metadata YouTube berjaya diimport.");
-  } catch (err: any) {
-    setError(err?.message || "Gagal import metadata YouTube.");
+  } catch (err) {
+    setError(err instanceof Error ? err.message : "Gagal import metadata YouTube.");
   } finally {
     setImportingMeta(false);
   }
@@ -223,12 +228,15 @@ async function handleSave() {
     }
 
     const finalYoutubeId =
-      youtubeId.trim() || extractYouTubeId(youtubeUrl.trim());
+      extractYouTubeId(youtubeUrl.trim()) || youtubeId.trim();
 
-    if (!finalYoutubeId) {
-      setError("YouTube ID tidak dapat dikesan. Sila semak URL YouTube.");
+    if (!/^[A-Za-z0-9_-]{11}$/.test(finalYoutubeId)) {
+      setError("YouTube ID tidak sah. Sila semak URL YouTube.");
       return;
     }
+
+    const original = videos.find((video) => video.id === editingId);
+    const idChanged = !original || original.youtubeId !== finalYoutubeId;
 
     const payload = {
       title: title.trim(),
@@ -251,20 +259,30 @@ async function handleSave() {
     };
 
     if (editingId) {
-      await updateDoc(doc(db, "videos", editingId), payload);
+      await updateDoc(doc(db, "videos", editingId), idChanged ? {
+        ...payload,
+        linkStatus: "unchecked",
+        linkReason: "",
+        linkCheckedAt: null,
+        linkCheckedYoutubeId: "",
+      } : payload);
       setMessage("Video berjaya dikemaskini.");
     } else {
       await addDoc(collection(db, "videos"), {
         ...payload,
         createdAt: serverTimestamp(),
+        linkStatus: "unchecked",
+        linkReason: "",
+        linkCheckedAt: null,
+        linkCheckedYoutubeId: "",
       });
       setMessage("Video baru berjaya ditambah.");
     }
 
     resetForm();
     await loadVideos();
-  } catch (err: any) {
-    setError(err?.message || "Gagal menyimpan video.");
+  } catch (err) {
+    setError(err instanceof Error ? err.message : "Gagal menyimpan video.");
   } finally {
     setSaving(false);
   }
@@ -301,8 +319,8 @@ async function handleSave() {
 
       setMessage("Video dipindahkan ke Trash.");
       await loadVideos();
-    } catch (err: any) {
-      setError(err?.message || "Gagal memindahkan video ke Trash.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Gagal memindahkan video ke Trash.");
     }
   }
 
@@ -323,8 +341,8 @@ async function handleSave() {
       );
 
       await loadVideos();
-    } catch (err: any) {
-      setError(err?.message || "Gagal menukar status publish.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Gagal menukar status publish.");
     }
   }
 
@@ -332,6 +350,9 @@ async function handleSave() {
     const normalized = search.trim().toLowerCase();
 
     return videos.filter((video) => {
+      const status = effectiveLinkStatus(video);
+      if (healthFilter === "issue" && (status === "ok" || status === "unchecked")) return false;
+      if (healthFilter === "unchecked" && status !== "unchecked") return false;
       return (
         normalized === "" ||
         video.title.toLowerCase().includes(normalized) ||
@@ -339,7 +360,7 @@ async function handleSave() {
         video.category.toLowerCase().includes(normalized)
       );
     });
-  }, [videos, search]);
+  }, [videos, search, healthFilter]);
 
   return (
     <AdminGuard>
@@ -401,9 +422,8 @@ async function handleSave() {
                 onChange={(e) => {
                   const value = e.target.value;
                   setYouTubeUrl(value);
-                  if (!youtubeId.trim()) {
-                    setYouTubeId(extractYouTubeId(value));
-                  }
+                  const extracted = extractYouTubeId(value);
+                  if (extracted) setYouTubeId(extracted);
                 }}
                 placeholder="URL YouTube"
                 className="w-full rounded-2xl border border-white/10 bg-[#16191f] px-4 py-3 text-sm text-white outline-none"
@@ -518,6 +538,16 @@ async function handleSave() {
             />
           </div>
 
+          <div className="mb-5 flex flex-wrap gap-2" aria-label="Tapis status pautan">
+            {([{"value":"all","label":"Semua"},{"value":"issue","label":"Perlu tindakan"},{"value":"unchecked","label":"Belum disemak"}] as const).map((option) => (
+              <button key={option.value} type="button" onClick={() => setHealthFilter(option.value)}
+                aria-pressed={healthFilter === option.value}
+                className={`rounded-full border px-3 py-2 text-xs font-semibold ${healthFilter === option.value ? "border-[#D4AF37]/50 bg-[#D4AF37]/10 text-[#E8D28A]" : "border-white/10 bg-white/[0.04] text-gray-400"}`}>
+                {option.label}
+              </button>
+            ))}
+          </div>
+
           {loading && (
   <div className="rounded-2xl bg-[#1f232b] p-5 text-sm text-gray-300">
     Sedang memuatkan video...
@@ -573,6 +603,12 @@ async function handleSave() {
               >
                 {video.isPublished ? "Published" : "Draft"}
               </span>
+              {(() => {
+                const status = effectiveLinkStatus(video);
+                return <span className={`rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] ${status === "ok" ? "bg-emerald-500/15 text-emerald-300" : status === "unchecked" ? "bg-white/10 text-white/60" : "bg-amber-400/15 text-amber-200"}`}>
+                  {status === "ok" ? "Pautan OK" : status === "unchecked" ? "Belum disemak" : "Perlu tindakan"}
+                </span>;
+              })()}
             </div>
 
             <p className="mt-3 line-clamp-2 text-[15px] font-semibold leading-[1.35] text-white">
@@ -584,6 +620,10 @@ async function handleSave() {
             <p className="mt-2 text-xs text-white/35">
               Sort Order: {video.sortOrder}
             </p>
+            {effectiveLinkStatus(video) !== "ok" && effectiveLinkStatus(video) !== "unchecked" && (
+              <p className="mt-2 text-xs leading-5 text-amber-200/80">{video.linkReason}</p>
+            )}
+            {video.youtubeId && <a href={`https://www.youtube.com/watch?v=${encodeURIComponent(video.youtubeId)}`} target="_blank" rel="noopener noreferrer" className="mt-2 inline-block text-xs font-medium text-[#E8D28A] underline underline-offset-2">Buka di YouTube</a>}
           </div>
         </div>
 
