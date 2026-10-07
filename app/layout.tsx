@@ -34,7 +34,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="ms">
       <body className="bg-gradient-to-b from-[#0f1115] to-[#1a1d24]">
         <AuthProvider>
           <AudioProvider>

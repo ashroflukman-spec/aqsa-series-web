@@ -18,7 +18,7 @@ type VideoItem = {
   thumbnailUrl?: string;
   sortOrder?: number;
   isPinned?: boolean;
-  createdAt?: any;
+  createdAt?: { seconds?: number } | null;
   isPublished: boolean;
   isDeleted?: boolean;
 };
@@ -68,7 +68,6 @@ function VideosPageContent() {
 
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState("All");
-  const [activeVideo, setActiveVideo] = useState<VideoItem | null>(null);
   const [showDescription, setShowDescription] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
 
@@ -112,22 +111,20 @@ function VideosPageContent() {
 
         setVideos(data);
 
-        if (data.length > 0) {
-  const matchedVideo = selectedVideoId
-    ? data.find((video) => video.id === selectedVideoId)
-    : null;
-
-  setActiveVideo(matchedVideo || data[0]);
-}
-      } catch (err: any) {
-        setError(err?.message || "Gagal memuatkan video.");
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "Gagal memuatkan video.");
       } finally {
         setLoading(false);
       }
     }
 
     loadVideos();
-  }, [selectedVideoId]);
+  }, []);
+
+  const activeVideo = useMemo(
+    () => videos.find((video) => video.id === selectedVideoId) || videos[0] || null,
+    [videos, selectedVideoId]
+  );
 
   const categories = useMemo(() => {
   return ["All", ...VIDEO_CATEGORIES];
@@ -172,6 +169,23 @@ function VideosPageContent() {
       return bTime - aTime;
     });
 }, [videos, search, activeCategory]);
+
+  function selectCategory(category: string) {
+    setActiveCategory(category);
+    if (category === "All" || activeVideo?.category === category) return;
+
+    const firstVideo = videos
+      .filter((video) => video.category === category)
+      .sort((a, b) => {
+        if (!!a.isPinned !== !!b.isPinned) return a.isPinned ? -1 : 1;
+        return (b.createdAt?.seconds ?? 0) - (a.createdAt?.seconds ?? 0);
+      })[0];
+
+    if (firstVideo) {
+      setShowDescription(false);
+      router.replace(`/videos?video=${firstVideo.id}`);
+    }
+  }
 
   const groupedVideos = useMemo(() => {
   const groups: Record<string, VideoItem[]> = {};
@@ -234,34 +248,33 @@ function VideosPageContent() {
           </div>
         </div>
 
-        <div className="mb-6 grid grid-cols-4 gap-2">
-  {categories.map((category) => {
-    const active = activeCategory === category;
-    const hasVideos =
-      category === "All" || categoriesWithVideos.has(category);
+        <div className="-mx-6 mb-6 overflow-x-auto px-6 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="group" aria-label="Kategori video">
+          <div className="flex w-max min-w-full gap-2">
+            {categories.map((category) => {
+              const active = activeCategory === category;
+              const hasVideos = category === "All" || categoriesWithVideos.has(category);
 
-    return (
-      <button
-        key={category}
-        onClick={() =>
-          category === "All" || hasVideos
-            ? setActiveCategory(category)
-            : null
-        }
-        disabled={category !== "All" && !hasVideos}
-        className={`min-h-[42px] rounded-2xl px-2 py-2 text-center text-[10px] font-medium leading-tight transition ${
-          active
-            ? "border border-[#D4AF37]/40 bg-[#D4AF37]/10 text-[#E8D28A]"
-            : hasVideos
-            ? "border border-white/10 bg-white/[0.04] text-[#E8D28A]"
-            : "cursor-not-allowed border border-white/10 bg-white/[0.04] text-gray-500"
-        }`}
-      >
-        {category}
-      </button>
-    );
-  })}
-</div>
+              return (
+                <button
+                  key={category}
+                  type="button"
+                  onClick={() => selectCategory(category)}
+                  disabled={category !== "All" && !hasVideos}
+                  aria-pressed={active}
+                  className={`min-h-11 shrink-0 whitespace-nowrap rounded-full px-4 py-2 text-center text-xs font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E8D28A] ${
+                    active
+                      ? "border border-[#D4AF37]/40 bg-[#D4AF37]/10 text-[#E8D28A]"
+                      : hasVideos
+                        ? "border border-white/10 bg-white/[0.04] text-[#E8D28A]"
+                        : "cursor-not-allowed border border-white/10 bg-white/[0.04] text-gray-500"
+                  }`}
+                >
+                  {category}
+                </button>
+              );
+            })}
+          </div>
+        </div>
 
         {loading && (
           <div className="rounded-2xl bg-[#1f232b] p-5 text-sm text-gray-300">
@@ -366,7 +379,7 @@ function VideosPageContent() {
                 <button
                   key={video.id}
                   onClick={() => {
-                    setActiveVideo(video);
+                    setShowDescription(false);
                     router.push(`/videos?video=${video.id}`);
                   }}
                   className={`w-full overflow-hidden rounded-[24px] border text-left transition duration-200 ${
@@ -437,7 +450,7 @@ function VideosPageContent() {
           <button
             key={video.id}
             onClick={() => {
-              setActiveVideo(video);
+              setShowDescription(false);
               router.push(`/videos?video=${video.id}`);
             }}
             className={`w-full overflow-hidden rounded-[24px] border text-left transition duration-200 ${

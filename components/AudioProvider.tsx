@@ -122,7 +122,7 @@ export function AudioProvider({
   ) => {
     const audio = ensureAudio();
 
-    if (nextQueue && nextQueue.length > 0) {
+    if (nextQueue) {
       setQueue(nextQueue);
     }
 
@@ -274,6 +274,8 @@ useEffect(() => {
     const handleEnded = async () => {
       setIsPlaying(false);
       setCurrentTime(0);
+
+      if (localStorage.getItem("setting-autoPlayNext") === "false") return;
 
       const nextIndex = currentQueueIndex + 1;
       const nextItem = queue[nextIndex];

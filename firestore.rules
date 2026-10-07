@@ -1,0 +1,27 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isAdmin() {
+      return request.auth != null &&
+        request.auth.token.email == 'ashroflukman@gmail.com';
+    }
+
+    // The current public pages list these collections and filter published items in the app.
+    match /series/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /episodes/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /speakers/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /videos/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+  }
+}

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
+import { useAudio } from "./AudioProvider";
 
 type MiniPlayerState = {
   seriesId: string;
@@ -14,105 +15,72 @@ type MiniPlayerState = {
 export default function MiniPlayer() {
   const router = useRouter();
   const pathname = usePathname();
+  const { activeEpisode, isPlaying } = useAudio();
 
-  const [mounted, setMounted] = useState(false);
   const [showMiniPlayer, setShowMiniPlayer] = useState(true);
   const [currentItem, setCurrentItem] = useState<MiniPlayerState | null>(null);
-  const [shouldRender, setShouldRender] = useState(false);
-  const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
+    function syncMiniPlayer() {
+      setShowMiniPlayer(localStorage.getItem("setting-showMiniPlayer") !== "false");
+      const latest = localStorage.getItem("continueListening");
+      if (!latest) {
+        setCurrentItem(null);
+        return;
+      }
 
-    const savedMiniPlayer = localStorage.getItem("setting-showMiniPlayer");
-    if (savedMiniPlayer !== null) {
-      setShowMiniPlayer(savedMiniPlayer === "true");
-    }
-
-    const savedContinueListening = localStorage.getItem("continueListening");
-    if (savedContinueListening) {
       try {
-        const parsed = JSON.parse(savedContinueListening);
+        const parsed = JSON.parse(latest);
         if (Array.isArray(parsed) && parsed.length > 0) {
           setCurrentItem(parsed[0]);
+        } else {
+          setCurrentItem(null);
         }
       } catch {
         setCurrentItem(null);
       }
     }
 
-    function syncMiniPlayer() {
-      const latest = localStorage.getItem("continueListening");
-      if (!latest) return;
-
-      try {
-        const parsed = JSON.parse(latest);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setCurrentItem(parsed[0]);
-        }
-      } catch {}
-    }
-
+    syncMiniPlayer();
     window.addEventListener("storage", syncMiniPlayer);
     window.addEventListener("focus", syncMiniPlayer);
+    window.addEventListener("aqsa:settings-changed", syncMiniPlayer);
 
     return () => {
       window.removeEventListener("storage", syncMiniPlayer);
       window.removeEventListener("focus", syncMiniPlayer);
+      window.removeEventListener("aqsa:settings-changed", syncMiniPlayer);
     };
   }, []);
 
   const hiddenOnRoutes = [
-  "/admin",
-  "/admin/login",
-  "/admin/speakers",
-  "/admin/series",
-  "/admin/episodes",
-  "/admin/trash",
-  "/admin/videos",
-  "/videos",
-];
+    "/admin",
+    "/videos",
+    "/player",
+  ];
 
-const isHiddenRoute = hiddenOnRoutes.some((route) => pathname.startsWith(route));
-const shouldShow = mounted && showMiniPlayer && !!currentItem && !isHiddenRoute;
+  const isHiddenRoute = hiddenOnRoutes.some((route) => pathname.startsWith(route));
+  const shouldShow = showMiniPlayer && !!(activeEpisode || currentItem) && !isHiddenRoute;
 
-useEffect(() => {
-  let timeoutId: number | undefined;
+  const safeCurrentItem: MiniPlayerState | null = activeEpisode
+    ? {
+        seriesId: activeEpisode.seriesId,
+        episodeId: activeEpisode.episodeId,
+        seriesTitle: activeEpisode.seriesTitle,
+        episodeTitle: activeEpisode.episodeTitle,
+        coverUrl: activeEpisode.coverUrl,
+      }
+    : currentItem;
 
-  if (shouldShow) {
-    setShouldRender(true);
-
-    requestAnimationFrame(() => {
-      setIsVisible(true);
-    });
-  } else {
-    setIsVisible(false);
-
-    timeoutId = window.setTimeout(() => {
-      setShouldRender(false);
-    }, 260);
-  }
-
-  return () => {
-    if (timeoutId) window.clearTimeout(timeoutId);
-  };
-}, [shouldShow]);
-
-  const safeCurrentItem = currentItem;
-
-if (!shouldRender || !safeCurrentItem) {
+if (!shouldShow || !safeCurrentItem) {
   return null;
 }
 
   return (
     <div
-  className={`fixed bottom-[4.95rem] left-1/2 z-40 w-[calc(100%-1.2rem)] max-w-md -translate-x-1/2 transform transition-all duration-300 ease-out ${
-    isVisible
-      ? "translate-y-0 opacity-100"
-      : "translate-y-3 opacity-0 pointer-events-none"
-  }`}
+  className="fixed bottom-[calc(4.95rem+env(safe-area-inset-bottom))] left-1/2 z-40 w-[calc(100%-1.2rem)] max-w-md -translate-x-1/2"
 >
-      <div className="relative overflow-hidden rounded-t-[22px] border-x border-t border-white/10 bg-[#0f141d]/72 backdrop-blur-[24px] shadow-[0_14px_38px_rgba(0,0,0,0.42)]">
+      <div className="animate-fade-in relative overflow-hidden rounded-t-[22px] border-x border-t border-white/10 bg-[#0f141d]/72 backdrop-blur-[24px] shadow-[0_14px_38px_rgba(0,0,0,0.42)] motion-reduce:animate-none">
         <div className="absolute inset-0 pointer-events-none">
           <div className="absolute inset-0 bg-gradient-to-b from-white/[0.08] via-white/[0.025] to-black/[0.10]" />
           <div className="absolute inset-x-0 top-0 h-8 bg-gradient-to-b from-white/[0.10] to-transparent" />
@@ -149,7 +117,7 @@ if (!shouldRender || !safeCurrentItem) {
 
           <div className="min-w-0 flex-1">
             <p className="truncate text-[9px] font-semibold uppercase tracking-[0.22em] text-[#E7D7A2]">
-              Now Playing
+              {isPlaying ? "Now Playing" : "Continue Listening"}
             </p>
             <p className="mt-1 truncate text-[13px] font-semibold text-white">
               {safeCurrentItem.episodeTitle}

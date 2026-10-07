@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "./AuthProvider";
+import { isAdminEmail } from "../lib/admin";
 
 export default function AdminGuard({
   children,
@@ -11,12 +12,15 @@ export default function AdminGuard({
 }) {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const isLoginPage = usePathname() === "/admin/login";
 
   useEffect(() => {
-    if (!loading && !user) {
+    if (!isLoginPage && !loading && !isAdminEmail(user?.email)) {
       router.push("/admin/login");
     }
-  }, [user, loading, router]);
+  }, [user, loading, router, isLoginPage]);
+
+  if (isLoginPage) return <>{children}</>;
 
   if (loading) {
     return (
@@ -26,7 +30,7 @@ export default function AdminGuard({
     );
   }
 
-  if (!user) {
+  if (!isAdminEmail(user?.email)) {
     return null;
   }
 

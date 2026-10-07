@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from "../../../lib/firebase";
 import { useAuth } from "../../../components/AuthProvider";
+import { isAdminEmail } from "../../../lib/admin";
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -16,7 +17,7 @@ export default function AdminLoginPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (!loading && user) {
+    if (!loading && isAdminEmail(user?.email)) {
       router.push("/admin");
     }
   }, [user, loading, router]);
@@ -33,6 +34,10 @@ export default function AdminLoginPage() {
     try {
       setSubmitting(true);
       await signInWithEmailAndPassword(auth, email.trim(), password);
+      if (!isAdminEmail(auth.currentUser?.email)) {
+        setError("Akaun ini tidak mempunyai akses admin.");
+        return;
+      }
       router.push("/admin");
     } catch (err: any) {
       setError("Login gagal. Sila semak email dan password.");

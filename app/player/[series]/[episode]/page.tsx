@@ -2,7 +2,7 @@
 
 import ShareEpisodeButton from "../../../../components/ShareEpisodeButton";
 import { useAudio } from "../../../../components/AudioProvider";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { collection, doc, getDoc, getDocs } from "firebase/firestore";
 import {
@@ -90,7 +90,9 @@ export default function PlayerPage() {
   const [series, setSeries] = useState<SeriesData | null>(null);
   const [seriesEpisodes, setSeriesEpisodes] = useState<EpisodeData[]>([]);
   const [speakerMap, setSpeakerMap] = useState<Record<string, string>>({});
-  const [error, setError] = useState("");
+  const [error, setError] = useState<{ routeKey: string; message: string } | null>(null);
+  const [loadedRouteKey, setLoadedRouteKey] = useState("");
+  const routeSyncPendingRef = useRef(true);
 
   const [isMarkerFlash, setIsMarkerFlash] = useState(false);
   const [markers, setMarkers] = useState<MarkerItem[]>([]);
@@ -98,6 +100,7 @@ export default function PlayerPage() {
 
   const episodeId = String(params.episode || "");
   const seriesId = String(params.series || "");
+  const routeKey = `${seriesId}/${episodeId}`;
 
   const markerStorageKey = useMemo(
     () => `aqsa_markers_${seriesId}_${episodeId}`,
@@ -109,21 +112,58 @@ export default function PlayerPage() {
     localStorage.setItem(markerStorageKey, JSON.stringify(nextMarkers));
   };
 
+  const getSpeakerName = useCallback((speakerId?: string, fallbackName?: string) => {
+    if (speakerId && speakerMap[speakerId]) return speakerMap[speakerId];
+    if (fallbackName?.trim()) return fallbackName;
+    return speakerId || "Penyampai tidak diketahui";
+  }, [speakerMap]);
+
+  const episodeQueue = useMemo(() => seriesEpisodes.map((ep) => ({
+    seriesId: ep.seriesId || seriesId,
+    episodeId: ep.id,
+    seriesTitle: series?.title || "Aqsa Series",
+    episodeTitle: ep.title || "Tanpa Tajuk",
+    audioUrl: ep.audioUrl || "",
+    coverUrl: series?.coverUrl || ep.coverUrl || ep.imageUrl || "",
+    speakerName: getSpeakerName(ep.speakerId, ep.speakerName),
+  })), [seriesEpisodes, series, seriesId, getSpeakerName]);
+
+  const syncEpisodeToProvider = useCallback(async (targetEpisode: EpisodeData) => {
+    const target = {
+      seriesId: targetEpisode.seriesId || seriesId,
+      episodeId: targetEpisode.id,
+      seriesTitle: series?.title || "Aqsa Series",
+      episodeTitle: targetEpisode.title || "Tanpa Tajuk",
+      audioUrl: targetEpisode.audioUrl || "",
+      coverUrl: series?.coverUrl || targetEpisode.coverUrl || targetEpisode.imageUrl || "",
+      speakerName: getSpeakerName(targetEpisode.speakerId, targetEpisode.speakerName),
+    };
+
+    await playEpisode(target, episodeQueue);
+  }, [episodeQueue, getSpeakerName, playEpisode, series, seriesId]);
+
   useEffect(() => {
+    let cancelled = false;
+    routeSyncPendingRef.current = true;
+
     async function fetchData() {
       try {
         const episodeRef = doc(db, "episodes", episodeId);
         const episodeSnap = await getDoc(episodeRef);
 
         if (!episodeSnap.exists()) {
-          setError("Episode tidak dijumpai");
+          if (!cancelled) setError({ routeKey, message: "Episode tidak dijumpai" });
           return;
         }
 
         const episodeData = episodeSnap.data();
 
-        if (episodeData.seriesId !== seriesId || episodeData.isDeleted === true) {
-          setError("Episode tidak dijumpai");
+        if (
+          episodeData.seriesId !== seriesId ||
+          episodeData.isDeleted === true ||
+          episodeData.isPublished === false
+        ) {
+          if (!cancelled) setError({ routeKey, message: "Episode tidak dijumpai" });
           return;
         }
 
@@ -151,26 +191,26 @@ export default function PlayerPage() {
   shareStatus: episodeData.shareStatus ?? "draft",
 };
 
-        setEpisode(currentEpisode);
-
         const seriesRef = doc(db, "series", seriesId);
         const seriesSnap = await getDoc(seriesRef);
 
-        if (seriesSnap.exists()) {
-          const seriesData = seriesSnap.data();
-
-          if (seriesData.isDeleted === true) {
-            setError("Series tidak dijumpai");
-            return;
-          }
-
-          setSeries({
-            id: seriesSnap.id,
-            title: seriesData.title ?? "",
-            coverUrl: seriesData.coverUrl ?? "",
-            isDeleted: seriesData.isDeleted ?? false,
-          });
+        if (!seriesSnap.exists()) {
+          if (!cancelled) setError({ routeKey, message: "Series tidak dijumpai" });
+          return;
         }
+
+        const seriesData = seriesSnap.data();
+        if (seriesData.isDeleted === true || seriesData.isPublished === false) {
+          if (!cancelled) setError({ routeKey, message: "Series tidak dijumpai" });
+          return;
+        }
+
+        const currentSeries: SeriesData = {
+          id: seriesSnap.id,
+          title: seriesData.title ?? "",
+          coverUrl: seriesData.coverUrl ?? "",
+          isDeleted: seriesData.isDeleted ?? false,
+        };
 
         const episodesSnap = await getDocs(collection(db, "episodes"));
         const filteredEpisodes: EpisodeData[] = episodesSnap.docs
@@ -197,8 +237,6 @@ export default function PlayerPage() {
               ep.isPublished !== false
           )
           .sort((a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0));
-
-        setSeriesEpisodes(filteredEpisodes);
 
         const speakersSnap = await getDocs(collection(db, "speakers"));
         const speakersData: SpeakerItem[] = speakersSnap.docs
@@ -229,16 +267,24 @@ export default function PlayerPage() {
           }
         }
 
+        if (cancelled) return;
+        setEpisode(currentEpisode);
+        setSeries(currentSeries);
+        setSeriesEpisodes(filteredEpisodes);
         setSpeakerMap(nextSpeakerMap);
+        setLoadedRouteKey(routeKey);
       } catch {
-        setError("Gagal memuatkan episod");
+        if (!cancelled) setError({ routeKey, message: "Gagal memuatkan episod" });
       }
     }
 
     if (episodeId && seriesId) {
       fetchData();
     }
-  }, [episodeId, seriesId]);
+    return () => {
+      cancelled = true;
+    };
+  }, [episodeId, seriesId, routeKey]);
 
   useEffect(() => {
     const saved = localStorage.getItem(markerStorageKey);
@@ -257,34 +303,33 @@ export default function PlayerPage() {
   }, [markerStorageKey]);
 
   useEffect(() => {
-  if (!episode || !series) return;
-  if (!episode.audioUrl) return;
+    if (loadedRouteKey !== routeKey || !episode || !series || !episode.audioUrl) return;
 
-  // Kalau provider belum ada episod aktif, sync page semasa ke provider
-  if (!activeEpisode) {
-    syncEpisodeToProvider(episode);
-    return;
-  }
+    const isSameEpisode =
+      activeEpisode?.seriesId === seriesId &&
+      activeEpisode?.episodeId === episodeId;
 
-  const isSameEpisode =
-    activeEpisode.seriesId === (episode.seriesId || seriesId) &&
-    activeEpisode.episodeId === episode.id;
-
-  // Kalau provider sudah pegang episod lain, jangan paksa balik ke page semasa.
-  // Biar effect route-sync yang tolak page ke episod provider itu.
-  if (!isSameEpisode) return;
-}, [episode, series, activeEpisode, seriesId]);
+    if (!isSameEpisode && routeSyncPendingRef.current) {
+      syncEpisodeToProvider(episode);
+    }
+  }, [loadedRouteKey, routeKey, episode, series, activeEpisode, seriesId, episodeId, syncEpisodeToProvider]);
 
   useEffect(() => {
-    if (!activeEpisode) return;
+    if (loadedRouteKey !== routeKey || !activeEpisode) return;
 
-    const activeSeriesId = activeEpisode.seriesId;
-    const activeEpisodeId = activeEpisode.episodeId;
+    const isSameEpisode =
+      activeEpisode.seriesId === seriesId && activeEpisode.episodeId === episodeId;
 
-    if (activeSeriesId !== seriesId || activeEpisodeId !== episodeId) {
-      router.push(`/player/${activeSeriesId}/${activeEpisodeId}`);
+    if (routeSyncPendingRef.current) {
+      if (isSameEpisode) routeSyncPendingRef.current = false;
+      return;
     }
-  }, [activeEpisode, seriesId, episodeId, router]);
+
+    if (!isSameEpisode) {
+      routeSyncPendingRef.current = true;
+      router.push(`/player/${activeEpisode.seriesId}/${activeEpisode.episodeId}`);
+    }
+  }, [activeEpisode, loadedRouteKey, routeKey, seriesId, episodeId, router]);
 
   useEffect(() => {
     if (!toast) return;
@@ -305,96 +350,13 @@ export default function PlayerPage() {
       ? seriesEpisodes[currentEpisodeIndex + 1]
       : null;
 
-  const updateContinueListening = (targetEpisode: EpisodeData) => {
-    if (!series) return;
-
-    const item = {
-      seriesId: series.id,
-      episodeId: targetEpisode.id,
-      seriesTitle: series.title || "Aqsa Series",
-      episodeTitle: targetEpisode.title || "Tanpa Tajuk",
-    };
-
-    try {
-      localStorage.setItem("continueListening", JSON.stringify([item]));
-
-      const existingRecent = localStorage.getItem("recentlyPlayed");
-      let recentList = existingRecent ? JSON.parse(existingRecent) : [];
-
-      if (!Array.isArray(recentList)) {
-        recentList = [];
-      }
-
-      recentList = recentList.filter(
-        (x: any) =>
-          !(x.seriesId === item.seriesId && x.episodeId === item.episodeId)
-      );
-
-      recentList.unshift(item);
-      localStorage.setItem(
-        "recentlyPlayed",
-        JSON.stringify(recentList.slice(0, 10))
-      );
-    } catch {}
-  };
-
-  function getSpeakerName(speakerId?: string, fallbackName?: string) {
-    if (speakerId && speakerMap[speakerId]) return speakerMap[speakerId];
-    if (fallbackName && fallbackName.trim() !== "") return fallbackName;
-    if (speakerId) return speakerId;
-    return "Penyampai tidak diketahui";
-  }
-
-  function buildQueue() {
-    return seriesEpisodes.map((ep) => ({
-      seriesId: ep.seriesId || seriesId,
-      episodeId: ep.id,
-      seriesTitle: series?.title || "Aqsa Series",
-      episodeTitle: ep.title || "Tanpa Tajuk",
-      audioUrl: ep.audioUrl || "",
-      coverUrl: series?.coverUrl || ep.coverUrl || ep.imageUrl || "",
-      speakerName: getSpeakerName(ep.speakerId, ep.speakerName),
-    }));
-  }
-
-  async function syncEpisodeToProvider(targetEpisode: EpisodeData) {
-    const queue = buildQueue();
-
-    const target = {
-      seriesId: targetEpisode.seriesId || seriesId,
-      episodeId: targetEpisode.id,
-      seriesTitle: series?.title || "Aqsa Series",
-      episodeTitle: targetEpisode.title || "Tanpa Tajuk",
-      audioUrl: targetEpisode.audioUrl || "",
-      coverUrl:
-        series?.coverUrl ||
-        targetEpisode.coverUrl ||
-        targetEpisode.imageUrl ||
-        "",
-      speakerName: getSpeakerName(
-        targetEpisode.speakerId,
-        targetEpisode.speakerName
-      ),
-    };
-
-    await playEpisode(target, queue);
-  }
-
-  const goToEpisode = async (targetEpisode: EpisodeData) => {
-    updateContinueListening(targetEpisode);
-    await syncEpisodeToProvider(targetEpisode);
-    router.push(`/player/${targetEpisode.seriesId || seriesId}/${targetEpisode.id}`);
-  };
-
   const handlePrevEpisode = async () => {
     if (!prevEpisode) return;
-    updateContinueListening(prevEpisode);
     await playPrev();
   };
 
   const handleNextEpisode = async () => {
     if (!nextEpisode) return;
-    updateContinueListening(nextEpisode);
     await playNext();
   };
 
@@ -492,15 +454,15 @@ const shareUrl =
     : `/share/${seriesId}/${episodeId}`;
 
 
-  if (error) {
+  if (error?.routeKey === routeKey) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-[#0f1115] text-white">
-        <h1 className="text-xl">{error}</h1>
+        <h1 className="text-xl">{error.message}</h1>
       </main>
     );
   }
 
-  if (!episode) {
+  if (loadedRouteKey !== routeKey || !episode) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-[#0f1115] text-white">
         <p>Memuatkan episod...</p>

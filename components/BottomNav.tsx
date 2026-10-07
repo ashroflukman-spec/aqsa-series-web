@@ -146,7 +146,9 @@ export default function BottomNav() {
       label: "Library",
       href: "/library",
       active:
-        pathname.startsWith("/library") || pathname.startsWith("/series"),
+        pathname.startsWith("/library") ||
+        pathname.startsWith("/series") ||
+        pathname.startsWith("/player"),
       icon: LibraryIcon,
     },
     {
@@ -158,8 +160,7 @@ export default function BottomNav() {
     {
       label: "Saved",
       href: "/favorites",
-      active:
-        pathname.startsWith("/favorites") || pathname.startsWith("/player"),
+      active: pathname.startsWith("/favorites"),
       icon: HeartIcon,
     },
     {
@@ -171,7 +172,7 @@ export default function BottomNav() {
   ];
 
   return (
-    <div className="fixed bottom-3 left-1/2 z-50 w-[calc(100%-1.2rem)] max-w-md -translate-x-1/2">
+    <nav aria-label="Navigasi utama" className="fixed bottom-[calc(0.75rem+env(safe-area-inset-bottom))] left-1/2 z-50 w-[calc(100%-1.2rem)] max-w-md -translate-x-1/2">
       <div className="relative overflow-hidden rounded-b-[24px] border border-white/10 bg-[#131722]/82 backdrop-blur-2xl shadow-[0_16px_40px_rgba(0,0,0,0.38)]">
         <div className="absolute inset-0 pointer-events-none">
           <div className="absolute -top-6 left-8 h-14 w-14 rounded-full bg-white/6 blur-2xl" />
@@ -186,8 +187,10 @@ export default function BottomNav() {
             return (
               <button
                 key={item.label}
+                type="button"
                 onClick={() => router.push(item.href)}
-                className={`flex flex-col items-center justify-center rounded-[18px] px-1 py-2 transition ${
+                aria-current={item.active ? "page" : undefined}
+                className={`flex min-h-14 flex-col items-center justify-center rounded-[18px] px-1 py-2 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E8D28A] ${
                   item.active
                     ? "bg-gradient-to-b from-[#a01f34] to-[#7A1F2B] text-white shadow-[0_8px_20px_rgba(122,31,43,0.40)]"
                     : "text-gray-300"
@@ -195,7 +198,7 @@ export default function BottomNav() {
               >
                 <Icon active={item.active} />
                 <span
-                  className={`mt-1 text-[9px] font-medium ${
+                  className={`mt-1 text-[10px] font-medium ${
                     item.active ? "text-white" : "text-gray-300"
                   }`}
                 >
@@ -206,6 +209,6 @@ export default function BottomNav() {
           })}
         </div>
       </div>
-    </div>
+    </nav>
   );
 }

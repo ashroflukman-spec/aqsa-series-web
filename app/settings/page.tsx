@@ -29,18 +29,21 @@ export default function SettingsPage() {
     const updated = !autoPlayNext;
     setAutoPlayNext(updated);
     localStorage.setItem("setting-autoPlayNext", String(updated));
+    window.dispatchEvent(new Event("aqsa:settings-changed"));
   }
 
   function toggleShowMiniPlayer() {
     const updated = !showMiniPlayer;
     setShowMiniPlayer(updated);
     localStorage.setItem("setting-showMiniPlayer", String(updated));
+    window.dispatchEvent(new Event("aqsa:settings-changed"));
   }
 
   function toggleCompactMode() {
     const updated = !compactMode;
     setCompactMode(updated);
     localStorage.setItem("setting-compactMode", String(updated));
+    window.dispatchEvent(new Event("aqsa:settings-changed"));
   }
 
   return (
@@ -70,6 +73,8 @@ export default function SettingsPage() {
 
               <button
                 onClick={toggleAutoPlayNext}
+                aria-label="Auto Play Next Episode"
+                aria-pressed={autoPlayNext}
                 className={`w-14 h-8 rounded-full relative transition ${
                   autoPlayNext ? "bg-[#7A1F2B]" : "bg-gray-600"
                 }`}
@@ -96,6 +101,8 @@ export default function SettingsPage() {
 
               <button
                 onClick={toggleShowMiniPlayer}
+                aria-label="Show Mini Player"
+                aria-pressed={showMiniPlayer}
                 className={`w-14 h-8 rounded-full relative transition ${
                   showMiniPlayer ? "bg-[#7A1F2B]" : "bg-gray-600"
                 }`}
@@ -122,6 +129,8 @@ export default function SettingsPage() {
 
               <button
                 onClick={toggleCompactMode}
+                aria-label="Compact Mode"
+                aria-pressed={compactMode}
                 className={`w-14 h-8 rounded-full relative transition ${
                   compactMode ? "bg-[#7A1F2B]" : "bg-gray-600"
                 }`}

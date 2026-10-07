@@ -1,0 +1,26 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isAdmin() {
+      return request.auth != null &&
+        request.auth.token.email == 'ashroflukman@gmail.com';
+    }
+
+    match /audio/{path=**} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /series/{path=**} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /series-original-work/{path=**} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /speakers/{path=**} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+  }
+}
