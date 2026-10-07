@@ -5,9 +5,9 @@ import { Copy, Facebook, Send, Share2, X } from "lucide-react";
 import { useLanguage } from "./LanguageProvider";
 
 const COPY = {
-  ms: { tagline: "Siri Pengetahuan Baitulmaqdis kita bermula di sini.", listen: "Dengar di Aqsa Series:", share: "Kongsi Episod", copy: "Salin", copied: "Disalin", more: "Lainnya", hint: "Pautan ini akan membawa pengguna terus ke halaman episod audio di Aqsa Series." },
-  en: { tagline: "Explore Baitulmaqdis with Aqsa Series.", listen: "Listen on Aqsa Series:", share: "Share Episode", copy: "Copy", copied: "Copied", more: "More", hint: "This link opens the audio episode on Aqsa Series." },
-  ar: { tagline: "اكتشف بيت المقدس مع Aqsa Series.", listen: "استمع عبر Aqsa Series:", share: "مشاركة الحلقة", copy: "نسخ", copied: "تم النسخ", more: "المزيد", hint: "يفتح هذا الرابط الحلقة الصوتية على Aqsa Series." },
+  ms: { tagline: "Siri Pengetahuan Baitulmaqdis kita bermula di sini.", listen: "Dengar di Aqsa Series:", share: "Kongsi Episod", copy: "Salin", copied: "Disalin", more: "Lainnya", hint: "Pautan ini akan membawa pengguna terus ke halaman episod audio di Aqsa Series.", linkLabel: "Pautan episod", copyFailed: "Salinan automatik gagal. Sila salin pautan di bawah.", shareFailed: "Menu kongsi tidak dapat dibuka. Gunakan Salin atau pilihan aplikasi di atas.", copiedForMore: "Mesej disalin. Tampal dalam aplikasi pilihan anda." },
+  en: { tagline: "Explore Baitulmaqdis with Aqsa Series.", listen: "Listen on Aqsa Series:", share: "Share Episode", copy: "Copy", copied: "Copied", more: "More", hint: "This link opens the audio episode on Aqsa Series.", linkLabel: "Episode link", copyFailed: "Automatic copy failed. Please copy the link below.", shareFailed: "The share menu could not open. Use Copy or one of the apps above.", copiedForMore: "Message copied. Paste it into your chosen app." },
+  ar: { tagline: "اكتشف بيت المقدس مع Aqsa Series.", listen: "استمع عبر Aqsa Series:", share: "مشاركة الحلقة", copy: "نسخ", copied: "تم النسخ", more: "المزيد", hint: "يفتح هذا الرابط الحلقة الصوتية على Aqsa Series.", linkLabel: "رابط الحلقة", copyFailed: "تعذر النسخ التلقائي. يرجى نسخ الرابط أدناه.", shareFailed: "تعذر فتح قائمة المشاركة. استخدم النسخ أو أحد التطبيقات أعلاه.", copiedForMore: "تم نسخ الرسالة. الصقها في التطبيق الذي تريده." },
 } as const;
 
 type Props = {
@@ -23,13 +23,17 @@ export default function ShareEpisodeButton({
 }: Props) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [feedback, setFeedback] = useState("");
   const { language } = useLanguage();
   const copy = COPY[language];
 
   const tagline = copy.tagline;
 
+  // Keep the prepared message short; long episode descriptions can exceed share URL limits.
+  const trimmedDescription = description?.trim() || "";
+  const shortDescription = trimmedDescription.length <= 260 ? trimmedDescription : "";
   const shareText = `${title}${
-    description ? `\n\n${description}` : ""
+    shortDescription ? `\n\n${shortDescription}` : ""
   }\n\n${tagline}\n\n${copy.listen}\n${shareUrl}`;
 
   const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
@@ -43,9 +47,17 @@ export default function ShareEpisodeButton({
   )}`;
 
   async function handleCopy() {
-    await navigator.clipboard.writeText(shareText);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1800);
+    setFeedback("");
+    try {
+      if (!navigator.clipboard?.writeText) throw new Error("Clipboard unavailable");
+      await navigator.clipboard.writeText(shareText);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+      return true;
+    } catch {
+      setFeedback(copy.copyFailed);
+      return false;
+    }
   }
 
   async function handleNativeShare() {
@@ -53,14 +65,18 @@ export default function ShareEpisodeButton({
       if (navigator.share) {
         await navigator.share({
           title,
-          text: description || title,
+          text: shortDescription || title,
           url: shareUrl,
         });
+        setOpen(false);
         return;
       }
 
-      await handleCopy();
-    } catch {}
+      if (await handleCopy()) setFeedback(copy.copiedForMore);
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") return;
+      setFeedback(copy.shareFailed);
+    }
   }
 
   return (
@@ -68,7 +84,7 @@ export default function ShareEpisodeButton({
       <div className="flex justify-center">
         <button
           type="button"
-          onClick={() => setOpen(true)}
+          onClick={() => { setFeedback(""); setOpen(true); }}
           aria-label={copy.share}
           className="flex h-14 w-14 items-center justify-center rounded-full border border-[#7A1F2B]/70 bg-[#7A1F2B]/20 text-white shadow-[0_0_24px_rgba(122,31,43,0.35)] transition duration-300 hover:scale-105 hover:bg-[#7A1F2B]/35 active:scale-95"
         >
@@ -77,19 +93,21 @@ export default function ShareEpisodeButton({
       </div>
 
       {open && (
-        <div className="fixed inset-0 z-[9999] flex items-end justify-center bg-black/70 px-4 pb-5 backdrop-blur-sm sm:items-center sm:pb-0">
-          <div className="w-full max-w-sm rounded-3xl border border-white/10 bg-[#11141b] p-5 text-white shadow-2xl">
+        <div className="fixed inset-0 z-[9999] flex items-end justify-center bg-black/70 px-4 pb-5 backdrop-blur-sm sm:items-center sm:pb-0" role="presentation" onClick={() => setOpen(false)}>
+          <div role="dialog" aria-modal="true" aria-labelledby="episode-share-heading" className="max-h-[calc(100dvh-2rem)] w-full max-w-sm overflow-y-auto rounded-3xl border border-white/10 bg-[#11141b] p-5 text-white shadow-2xl" onClick={(event) => event.stopPropagation()} onKeyDown={(event) => { if (event.key === "Escape") setOpen(false); }}>
             <div className="mb-4 flex items-center justify-between">
               <div>
                 <p className="text-xs uppercase tracking-[0.22em] text-[#D4AF37]">
                   Aqsa Series
                 </p>
-                <h2 className="mt-1 text-lg font-bold">{copy.share}</h2>
+                <h2 id="episode-share-heading" className="mt-1 text-lg font-bold">{copy.share}</h2>
               </div>
 
               <button
                 type="button"
                 onClick={() => setOpen(false)}
+                aria-label={language === "ms" ? "Tutup" : language === "ar" ? "إغلاق" : "Close"}
+                autoFocus
                 className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white/80"
               >
                 <X size={18} />
@@ -169,6 +187,8 @@ export default function ShareEpisodeButton({
             <p className="mt-5 rounded-2xl bg-white/[0.04] p-3 text-xs leading-relaxed text-white/40">
               {copy.hint}
             </p>
+            {feedback && <p role="status" className="mt-3 rounded-xl border border-[#D4AF37]/25 bg-[#D4AF37]/10 p-3 text-xs leading-relaxed text-[#E8D28A]">{feedback}</p>}
+            {feedback === copy.copyFailed && <input aria-label={copy.linkLabel} readOnly value={shareUrl} onFocus={(event) => event.currentTarget.select()} className="mt-2 w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-xs text-white" />}
           </div>
         </div>
       )}

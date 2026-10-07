@@ -322,18 +322,6 @@ export default async function Image({ params }: Props) {
             >
               <div
                 style={{
-                  color: "#B08A25",
-                  fontSize: 48,
-                  lineHeight: 1,
-                  fontFamily: "serif",
-                  marginRight: 18,
-                }}
-              >
-                “
-              </div>
-
-              <div
-                style={{
                   display: "flex",
                   flexDirection: "column",
                   flex: 1,
@@ -341,43 +329,24 @@ export default async function Image({ params }: Props) {
               >
                 <div
                   style={{
+                    color: "#8A1F32",
+                    fontSize: 17,
+                    fontWeight: 900,
+                    letterSpacing: 2,
+                    marginBottom: 10,
+                  }}
+                >
+                  TENTANG EPISOD
+                </div>
+                <div
+                  style={{
                     color: "#2D2410",
                     fontSize: 24,
                     lineHeight: 1.32,
-                    fontWeight: 900,
-                    fontStyle: "italic",
+                    fontWeight: 700,
                   }}
                 >
                   {caption}
-                </div>
-
-                <div
-                  style={{
-                    marginTop: 18,
-                    display: "flex",
-                    justifyContent: "flex-end",
-                    alignItems: "center",
-                    gap: 14,
-                  }}
-                >
-                  <div
-                    style={{
-                      width: 72,
-                      height: 2,
-                      background: "rgba(176,138,37,0.7)",
-                    }}
-                  />
-
-                  <div
-                    style={{
-                      color: "#8A1F32",
-                      fontSize: 22,
-                      fontWeight: 950,
-                      letterSpacing: 2,
-                    }}
-                  >
-                    — Al-Maqdisiy
-                  </div>
                 </div>
               </div>
             </div>

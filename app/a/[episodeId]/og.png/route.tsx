@@ -311,38 +311,10 @@ export async function GET(request: Request, { params }: Props) {
                 flexDirection: "column",
               }}
             >
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "flex-start",
-                }}
-              >
-                <span
-                  style={{
-                    color: "#C49B2E",
-                    fontSize: "28px",
-                    fontWeight: 700,
-                    marginRight: "12px",
-                    lineHeight: 1,
-                  }}
-                >
-                  “
-                </span>
-                <span>{quote}</span>
+              <div style={{ color: "#9A1C35", fontSize: "16px", fontWeight: 800, letterSpacing: "3px", marginBottom: "8px" }}>
+                TENTANG EPISOD
               </div>
-
-              <div
-                style={{
-                  marginTop: "14px",
-                  display: "flex",
-                  justifyContent: "flex-end",
-                  color: "#9A1C35",
-                  fontSize: "18px",
-                  letterSpacing: "3px",
-                }}
-              >
-                — Al-Maqdisiy
-              </div>
+              <div>{quote}</div>
             </div>
 
             <div
