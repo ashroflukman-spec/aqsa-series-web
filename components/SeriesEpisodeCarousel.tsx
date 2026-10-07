@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { Play } from "lucide-react";
 import { useRef, useState } from "react";
 
 export type CarouselEpisode = {
@@ -183,8 +184,12 @@ export default function SeriesEpisodeCarousel({
                 <span className="absolute left-4 top-4 rounded-full border border-[#D4AF37]/35 bg-black/50 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#E8D28A] backdrop-blur">
                   Episod {index + 1}
                 </span>
-                <span aria-hidden="true" className="absolute bottom-4 right-4 flex h-10 w-10 items-center justify-center rounded-full border border-white/20 bg-[#7A1F2B] text-lg text-white shadow-lg">
-                  ▶
+                <span
+                  aria-hidden="true"
+                  className="absolute bottom-4 right-4 flex h-12 w-12 items-center justify-center rounded-full border border-white/20 bg-red-500 text-white shadow-[0_10px_26px_rgba(239,68,68,0.35)] transition duration-300 group-hover:scale-105 group-active:scale-95"
+                >
+                  <span className="absolute inset-[1px] rounded-full bg-gradient-to-br from-white/20 via-transparent to-black/10" />
+                  <Play size={21} fill="currentColor" strokeWidth={2} className="relative ml-0.5" />
                 </span>
               </div>
               <div className="flex min-h-[144px] flex-col p-4">
