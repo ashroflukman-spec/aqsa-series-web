@@ -1,11 +1,14 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { collection, getDocs, orderBy, query } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import { useAuth } from "../components/AuthProvider";
+import SeriesEpisodeCarousel, {
+  type CarouselEpisode,
+} from "../components/SeriesEpisodeCarousel";
 
 type SeriesItem = {
   id: string;
@@ -33,6 +36,12 @@ type RecentItem = {
   episodeTitle: string;
 };
 
+type EpisodeItem = CarouselEpisode & {
+  displayOrder: number;
+  isPublished: boolean;
+  isDeleted: boolean;
+};
+
 type VideoItem = {
   id: string;
   title: string;
@@ -44,7 +53,7 @@ type VideoItem = {
   thumbnailUrl?: string;
   sortOrder?: number;
   isPinned?: boolean;
-  createdAt?: any;
+  createdAt?: { seconds?: number } | null;
   isPublished: boolean;
   isDeleted?: boolean;
 };
@@ -79,6 +88,7 @@ export default function Page() {
 
   const [search, setSearch] = useState("");
   const [series, setSeries] = useState<SeriesItem[]>([]);
+  const [episodes, setEpisodes] = useState<EpisodeItem[]>([]);
   const [videos, setVideos] = useState<VideoItem[]>([]);
   const [speakerMap, setSpeakerMap] = useState<Record<string, string>>({});
   const [recentlyPlayed, setRecentlyPlayed] = useState<RecentItem[]>([]);
@@ -116,8 +126,9 @@ export default function Page() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const [seriesSnapshot, speakersSnapshot, videosSnapshot] = await Promise.all([
+        const [seriesSnapshot, episodesSnapshot, speakersSnapshot, videosSnapshot] = await Promise.all([
           getDocs(query(collection(db, "series"), orderBy("sortOrder", "asc"))),
+          getDocs(collection(db, "episodes")),
           getDocs(collection(db, "speakers")),
           getDocs(query(collection(db, "videos"), orderBy("sortOrder", "asc"))),
         ]);
@@ -135,6 +146,23 @@ export default function Page() {
           .filter((item) => item.isPublished === true && item.isDeleted !== true);
 
         setSeries(seriesData);
+
+        const episodesData: EpisodeItem[] = episodesSnapshot.docs
+          .map((docItem) => ({
+            id: docItem.id,
+            title: docItem.data().title ?? "",
+            seriesId: docItem.data().seriesId ?? "",
+            coverUrl: docItem.data().coverUrl ?? "",
+            imageUrl: docItem.data().imageUrl ?? "",
+            durationSeconds: docItem.data().durationSeconds ?? 0,
+            displayOrder: docItem.data().displayOrder ?? 0,
+            isPublished: docItem.data().isPublished ?? false,
+            isDeleted: docItem.data().isDeleted ?? false,
+          }))
+          .filter((item) => item.isPublished === true && item.isDeleted !== true)
+          .sort((a, b) => a.displayOrder - b.displayOrder);
+
+        setEpisodes(episodesData);
 
         const speakersData: SpeakerItem[] = speakersSnapshot.docs
           .map((docItem) => ({
@@ -192,8 +220,8 @@ export default function Page() {
           .filter((item) => item.isPublished === true && item.isDeleted !== true);
 
         setVideos(videosData);
-      } catch (err: any) {
-        setError(err?.message || "Gagal memuatkan kandungan dari Firebase");
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "Gagal memuatkan kandungan dari Firebase");
       } finally {
         setLoading(false);
       }
@@ -228,6 +256,14 @@ export default function Page() {
     });
   }, [series, speakerMap, normalized]);
 
+  const episodesBySeries = useMemo(() => {
+    const grouped: Record<string, CarouselEpisode[]> = {};
+    for (const episode of episodes) {
+      (grouped[episode.seriesId] ??= []).push(episode);
+    }
+    return grouped;
+  }, [episodes]);
+
   const highlightVideos = useMemo(() => {
   return [...videos]
     .sort((a, b) => {
@@ -247,7 +283,7 @@ export default function Page() {
     return speakerMap[speakerId] || speakerId || "Speaker tidak diketahui";
   }
 
-  function navigateToVideos() {
+  const navigateToVideos = useCallback(() => {
     if (isVideosTransitioning) return;
 
     setIsVideosTransitioning(true);
@@ -255,7 +291,7 @@ export default function Page() {
     window.setTimeout(() => {
       router.push("/videos");
     }, 260);
-  }
+  }, [isVideosTransitioning, router]);
 
   function handleVideoSliderScroll() {
     const container = videoSliderRef.current;
@@ -297,7 +333,7 @@ export default function Page() {
         videosRedirectTimerRef.current = null;
       }
     };
-  }, [activeVideoSlide, highlightVideos.length]);
+  }, [activeVideoSlide, highlightVideos.length, navigateToVideos]);
 
   return (
     <main className="relative flex min-h-screen justify-center overflow-hidden bg-gradient-to-b from-[#0f1115] to-[#1a1d24] text-white">
@@ -675,39 +711,18 @@ export default function Page() {
         )}
 
         {!loading && !error && filteredSeries.length > 0 && (
-          <div className="space-y-7">
+          <div className="space-y-9">
             {filteredSeries.map((item) => (
-              <div
+              <SeriesEpisodeCarousel
                 key={item.id}
-                onClick={() => router.push("/series/" + item.id)}
-                className="group cursor-pointer active:scale-[0.985] transition duration-200"
-              >
-                <div className="overflow-hidden rounded-[26px] border border-white/10 bg-white/[0.04] shadow-[0_14px_40px_rgba(0,0,0,0.22)] backdrop-blur-xl transition duration-300 hover:-translate-y-1 hover:border-white/15 hover:bg-white/[0.06] hover:shadow-[0_20px_54px_rgba(0,0,0,0.3)] active:scale-[0.985] active:border-white/15 active:bg-white/[0.06] active:shadow-[0_18px_44px_rgba(0,0,0,0.26),0_0_24px_rgba(212,175,55,0.08)]">
-                  <div className="relative h-48">
-                    {item.coverUrl && item.coverUrl.trim() !== "" ? (
-                      <img
-                        src={item.coverUrl}
-                        alt={item.title}
-                        className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
-                      />
-                    ) : (
-                      <div className="absolute inset-0 bg-gradient-to-br from-[#20252f] to-[#12151b]" />
-                    )}
-
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent" />
-                  </div>
-                </div>
-
-                <div className="px-1 pt-3.5">
-                  <div className="line-clamp-2 text-[20px] font-semibold leading-[1.25] text-white">
-                    {item.title}
-                  </div>
-
-                  <div className="mt-1.5 text-sm text-white/45">
-                    Penyampai · {getSpeakerName(item.speakerId)}
-                  </div>
-                </div>
-              </div>
+                series={item}
+                speakerName={getSpeakerName(item.speakerId)}
+                episodes={episodesBySeries[item.id] ?? []}
+                onOpenSeries={() => router.push("/series/" + item.id)}
+                onOpenEpisode={(episode) =>
+                  router.push("/player/" + item.id + "/" + episode.id)
+                }
+              />
             ))}
           </div>
         )}
