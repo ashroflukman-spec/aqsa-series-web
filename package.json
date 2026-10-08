@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "check": "npm run lint && npm run build",
+    "test:video-health": "node --test tests/youtubeHealthServer.test.mjs",
     "test:rules": "firebase emulators:exec --only firestore --project demo-aqsa-series-rules 'node --test tests/firestore.rules.test.mjs'"
   },
   "dependencies": {

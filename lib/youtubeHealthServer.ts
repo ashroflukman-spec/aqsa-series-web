@@ -59,5 +59,29 @@ export async function lookupVideoLinks(ids: string[]): Promise<LinkResult[]> {
   const found = new Map<string, YouTubeVideo>(
     (data.items as YouTubeVideo[]).map((item) => [item.id, item])
   );
-  return ids.map((id) => ({ id, ...classifyVideo(found.get(id)) }));
+  const results: LinkResult[] = [];
+  for (const id of ids) {
+    const video = found.get(id);
+    const result = classifyVideo(video);
+
+    // YouTube can report an old livestream as "uploaded" even while its
+    // public embed is playable. Confirm availability before flagging it.
+    if (result.status === "review") {
+      const oembed = new URL("https://www.youtube.com/oembed");
+      oembed.searchParams.set("url", `https://www.youtube.com/watch?v=${id}`);
+      oembed.searchParams.set("format", "json");
+      try {
+        const response = await fetch(oembed, { cache: "no-store", signal: AbortSignal.timeout(10000) });
+        if (response.ok) {
+          results.push({ id, status: "ok", reason: "" });
+          continue;
+        }
+      } catch {
+        // Leave the video for review if the independent check is unavailable.
+      }
+    }
+
+    results.push({ id, ...result });
+  }
+  return results;
 }
