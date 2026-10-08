@@ -6,11 +6,12 @@ import { collection, getDocs, orderBy, query } from "firebase/firestore";
 import { db } from "../../lib/firebase";
 import { useLanguage } from "../../components/LanguageProvider";
 import { localizeContent, type TranslatableContent } from "../../lib/localizedContent";
+import ContentFeedback from "../../components/ContentFeedback";
 
 const COPY = {
-  ms: { back: "Kembali", title: "Pustaka", subtitle: "Semua siri dan episod yang tersedia.", loading: "Sedang memuatkan pustaka...", empty: "Tiada siri dijumpai.", speaker: "Penyampai", unknownSpeaker: "Penyampai tidak diketahui" },
-  en: { back: "Back", title: "Library", subtitle: "Browse all available series and episodes.", loading: "Loading library...", empty: "No series found.", speaker: "Speaker", unknownSpeaker: "Unknown speaker" },
-  ar: { back: "رجوع", title: "المكتبة", subtitle: "تصفح جميع السلاسل والحلقات المتاحة.", loading: "جارٍ تحميل المكتبة...", empty: "لم يُعثر على سلاسل.", speaker: "المتحدث", unknownSpeaker: "متحدث غير معروف" },
+  ms: { back: "Kembali", title: "Pustaka", subtitle: "Semua siri dan episod yang tersedia.", loading: "Sedang memuatkan pustaka...", empty: "Belum ada siri dalam pustaka.", failed: "Pustaka belum dapat dimuatkan", failedDetail: "Sila cuba lagi sebentar lagi.", offlineDetail: "Peranti anda tidak bersambung ke internet. Semak sambungan dan cuba lagi.", retry: "Cuba lagi", speaker: "Penyampai", unknownSpeaker: "Penyampai tidak diketahui" },
+  en: { back: "Back", title: "Library", subtitle: "Browse all available series and episodes.", loading: "Loading library...", empty: "No series in the library yet.", failed: "Library could not be loaded", failedDetail: "Please try again shortly.", offlineDetail: "Your device is offline. Check your connection and try again.", retry: "Try again", speaker: "Speaker", unknownSpeaker: "Unknown speaker" },
+  ar: { back: "رجوع", title: "المكتبة", subtitle: "تصفح جميع السلاسل والحلقات المتاحة.", loading: "جارٍ تحميل المكتبة...", empty: "لا توجد سلاسل في المكتبة بعد.", failed: "تعذّر تحميل المكتبة", failedDetail: "يرجى المحاولة مرة أخرى بعد قليل.", offlineDetail: "جهازك غير متصل بالإنترنت. تحقق من الاتصال وحاول مرة أخرى.", retry: "إعادة المحاولة", speaker: "المتحدث", unknownSpeaker: "متحدث غير معروف" },
 } as const;
 
 type SeriesItem = {
@@ -63,15 +64,22 @@ export default function LibraryPage() {
   const [speakerMap, setSpeakerMap] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
     async function fetchData() {
       try {
+        setLoading(true);
+        setError("");
         const seriesQuery = query(
           collection(db, "series"),
           orderBy("sortOrder", "asc")
         );
-        const seriesSnapshot = await getDocs(seriesQuery);
+        const [seriesSnapshot, episodesSnapshot, speakersSnapshot] = await Promise.all([
+          getDocs(seriesQuery),
+          getDocs(collection(db, "episodes")),
+          getDocs(collection(db, "speakers")),
+        ]);
 
         const seriesData: SeriesItem[] = seriesSnapshot.docs
           .map((docItem) => ({
@@ -86,9 +94,6 @@ export default function LibraryPage() {
           }))
           .filter((item) => item.isPublished === true && item.isDeleted !== true);
 
-        setSeries(seriesData);
-
-        const episodesSnapshot = await getDocs(collection(db, "episodes"));
         const episodesData: EpisodeItem[] = episodesSnapshot.docs
           .map((docItem) => ({
             id: docItem.id,
@@ -105,9 +110,6 @@ export default function LibraryPage() {
           .filter((item) => item.isPublished === true && item.isDeleted !== true)
           .sort((a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0));
 
-        setEpisodes(episodesData);
-
-        const speakersSnapshot = await getDocs(collection(db, "speakers"));
         const speakersData: SpeakerItem[] = speakersSnapshot.docs
           .map((docItem) => ({
             id: docItem.id,
@@ -136,16 +138,18 @@ export default function LibraryPage() {
           }
         }
 
+        setSeries(seriesData);
+        setEpisodes(episodesData);
         setSpeakerMap(nextSpeakerMap);
-      } catch (err: unknown) {
-        setError(err instanceof Error ? err.message : "Gagal memuatkan library");
+      } catch {
+        setError(navigator.onLine ? "failed" : "offline");
       } finally {
         setLoading(false);
       }
     }
 
     fetchData();
-  }, []);
+  }, [retryCount]);
 
   function getSpeakerName(speakerId: string) {
     return speakerMap[speakerId] || speakerId || copy.unknownSpeaker;
@@ -157,13 +161,13 @@ export default function LibraryPage() {
 
   return (
     <main className="min-h-screen bg-[#0f1115] text-white flex justify-center">
-      <div className="w-full max-w-md px-6 py-10 pb-32">
+      <div className="w-full max-w-md px-6 py-10 pb-[calc(11rem+env(safe-area-inset-bottom))]">
         <div className="mb-6">
           <button
             onClick={() => router.push("/")}
-            className="text-sm text-gray-400"
+            className="min-h-11 rounded-lg px-2 text-sm text-gray-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E8D28A]"
           >
-            ← {copy.back}
+            {language === "ar" ? "→" : "←"} {copy.back}
           </button>
         </div>
 
@@ -174,23 +178,11 @@ export default function LibraryPage() {
           </p>
         </div>
 
-        {loading && (
-          <div className="rounded-2xl bg-[#1f232b] p-5 text-sm text-gray-300">
-            {copy.loading}
-          </div>
-        )}
+        {loading && <ContentFeedback kind="loading" title={copy.loading} />}
 
-        {!loading && error && (
-          <div className="rounded-2xl border border-red-500/30 bg-red-950/40 p-5 text-sm text-red-200">
-            {error}
-          </div>
-        )}
+        {!loading && error && <ContentFeedback kind="error" title={copy.failed} detail={error === "offline" ? copy.offlineDetail : copy.failedDetail} offline={error === "offline"} actionLabel={copy.retry} onAction={() => setRetryCount((count) => count + 1)} />}
 
-        {!loading && !error && series.length === 0 && (
-          <div className="rounded-2xl bg-[#1f232b] p-5 text-sm text-gray-400">
-            {copy.empty}
-          </div>
-        )}
+        {!loading && !error && series.length === 0 && <ContentFeedback kind="empty" title={copy.empty} />}
 
         {!loading && !error && series.length > 0 && (
           <div className="space-y-8">
@@ -199,9 +191,10 @@ export default function LibraryPage() {
 
               return (
                 <div key={item.id}>
-                  <div
+                  <button
+                    type="button"
                     onClick={() => router.push("/series/" + item.id)}
-                    className="mb-3 rounded-2xl overflow-hidden bg-[#1f232b] cursor-pointer"
+                    className="mb-3 block w-full rounded-2xl overflow-hidden bg-[#1f232b] text-start focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E8D28A]"
                   >
                     <div className="relative h-44">
                       {item.coverUrl && item.coverUrl.trim() !== "" ? (
@@ -216,7 +209,7 @@ export default function LibraryPage() {
 
                       <div className="absolute inset-0 bg-black/45" />
 
-                      <div className="absolute bottom-4 left-4 right-4">
+                      <div className="absolute bottom-4 inset-x-4">
                         <div className="text-lg font-semibold leading-snug">
                           {localizeContent("series", item, language).title}
                         </div>
@@ -226,23 +219,24 @@ export default function LibraryPage() {
                         </div>
                       </div>
                     </div>
-                  </div>
+                  </button>
 
                   {seriesEpisodes.length > 0 && (
                     <div className="space-y-3">
                       {seriesEpisodes.map((ep) => (
-                        <div
+                        <button
                           key={ep.id}
+                          type="button"
                           onClick={() =>
                             router.push("/player/" + ep.seriesId + "/" + ep.id)
                           }
-                          className="bg-[#1f232b] rounded-2xl p-4 cursor-pointer hover:bg-[#262b35] transition"
+                          className="block w-full min-h-14 bg-[#1f232b] rounded-2xl p-4 text-start hover:bg-[#262b35] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E8D28A]"
                         >
                           <div className="text-sm font-semibold">{localizeContent("episode", ep, language).title}</div>
                           <div className="text-xs text-gray-400 mt-1">
                             {localizeContent("series", item, language).title} • {formatDuration(ep.durationSeconds || 0)}
                           </div>
-                        </div>
+                        </button>
                       ))}
                     </div>
                   )}

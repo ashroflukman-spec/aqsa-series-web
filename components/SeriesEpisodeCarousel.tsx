@@ -57,6 +57,7 @@ export default function SeriesEpisodeCarousel({
   const suppressClickRef = useRef(false);
   const [activeSlide, setActiveSlide] = useState(0);
   const slideCount = episodes.length + 1;
+  const episodeCount = language === "ar" ? `${copy.episode} ${episodes.length}` : `${episodes.length} ${copy.episode.toLowerCase()}`;
 
   function scrollToSlide(index: number) {
     const scroller = scrollerRef.current;
@@ -138,7 +139,7 @@ export default function SeriesEpisodeCarousel({
           onClick={onOpenSeries}
           aria-label={`${copy.openSeries} ${localizedSeries.title}`}
           dir={language === "ar" ? "rtl" : "ltr"}
-          className="group w-[92%] shrink-0 snap-start overflow-hidden rounded-[26px] border border-white/10 bg-white/[0.04] text-left shadow-[0_14px_40px_rgba(0,0,0,0.22)] transition duration-300 hover:border-white/15 hover:bg-white/[0.06] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D4AF37]"
+          className="group w-[92%] shrink-0 snap-start overflow-hidden rounded-[26px] border border-white/10 bg-white/[0.04] text-start shadow-[0_14px_40px_rgba(0,0,0,0.22)] transition duration-300 hover:border-white/15 hover:bg-white/[0.06] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D4AF37]"
         >
           <div className="relative h-48 overflow-hidden bg-gradient-to-br from-[#20252f] to-[#12151b]">
             {series.coverUrl && (
@@ -153,7 +154,7 @@ export default function SeriesEpisodeCarousel({
               />
             )}
             <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent" />
-            <span className="absolute left-4 top-4 rounded-full border border-white/20 bg-black/40 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-white backdrop-blur">
+            <span className="absolute start-4 top-4 rounded-full border border-white/20 bg-black/40 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-white backdrop-blur">
               {copy.series}
             </span>
           </div>
@@ -161,12 +162,12 @@ export default function SeriesEpisodeCarousel({
             <span className="line-clamp-2 text-[19px] font-semibold leading-[1.28] text-white">
               {localizedSeries.title}
             </span>
-            <span className="mt-1.5 line-clamp-1 text-sm text-white/50">
+            <span className="mt-1.5 line-clamp-1 text-sm text-white/75">
               {language === "ms" ? "Penyampai" : language === "en" ? "Speaker" : "المتحدث"} · {speakerName}
             </span>
             <span className="mt-auto flex items-center justify-between pt-4 text-xs font-medium text-[#E8D28A]">
-              <span>{episodes.length > 0 ? `${episodes.length} ${copy.episode.toLowerCase()} · ${copy.swipe}` : copy.viewSeries}</span>
-              <span aria-hidden="true">→</span>
+              <span>{episodes.length > 0 ? `${episodeCount} · ${copy.swipe}` : copy.viewSeries}</span>
+              <span aria-hidden="true">{language === "ar" ? "←" : "→"}</span>
             </span>
           </div>
         </button>
@@ -183,7 +184,7 @@ export default function SeriesEpisodeCarousel({
               onClick={() => onOpenEpisode(episode)}
               aria-label={`${copy.openEpisode} ${index + 1}: ${localizedEpisode.title}`}
               dir={language === "ar" ? "rtl" : "ltr"}
-              className="group w-[92%] shrink-0 snap-start overflow-hidden rounded-[26px] border border-white/10 bg-white/[0.04] text-left shadow-[0_14px_40px_rgba(0,0,0,0.22)] transition duration-300 hover:border-white/15 hover:bg-white/[0.06] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D4AF37]"
+              className="group w-[92%] shrink-0 snap-start overflow-hidden rounded-[26px] border border-white/10 bg-white/[0.04] text-start shadow-[0_14px_40px_rgba(0,0,0,0.22)] transition duration-300 hover:border-white/15 hover:bg-white/[0.06] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D4AF37]"
             >
               <div className="relative h-48 overflow-hidden bg-gradient-to-br from-[#20252f] to-[#12151b]">
                 {coverUrl && (
@@ -198,12 +199,12 @@ export default function SeriesEpisodeCarousel({
                   />
                 )}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/15 to-black/20" />
-                <span className="absolute left-4 top-4 rounded-full border border-[#D4AF37]/35 bg-black/50 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#E8D28A] backdrop-blur">
+                <span className="absolute start-4 top-4 rounded-full border border-[#D4AF37]/35 bg-black/50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#E8D28A] backdrop-blur">
                   {copy.episode} {index + 1}
                 </span>
                 <span
                   aria-hidden="true"
-                  className="absolute bottom-4 right-4 flex h-12 w-12 items-center justify-center rounded-full border border-white/20 bg-red-500 text-white shadow-[0_10px_26px_rgba(239,68,68,0.35)] transition duration-300 group-hover:scale-105 group-active:scale-95"
+                  className="absolute bottom-4 end-4 flex h-12 w-12 items-center justify-center rounded-full border border-white/20 bg-red-500 text-white shadow-[0_10px_26px_rgba(239,68,68,0.35)] transition duration-300 group-hover:scale-105 group-active:scale-95"
                 >
                   <span className="absolute inset-[1px] rounded-full bg-gradient-to-br from-white/20 via-transparent to-black/10" />
                   <Play size={21} fill="currentColor" strokeWidth={2} className="relative ml-0.5" />
@@ -213,12 +214,12 @@ export default function SeriesEpisodeCarousel({
                 <span className="line-clamp-2 text-[19px] font-semibold leading-[1.28] text-white">
                   {localizedEpisode.title}
                 </span>
-                <span className="mt-1.5 line-clamp-1 text-sm text-white/50">
+                <span className="mt-1.5 line-clamp-1 text-sm text-white/75">
                   {localizedSeries.title}
                 </span>
                 <span className="mt-auto flex items-center justify-between pt-4 text-xs font-medium text-[#E8D28A]">
                   <span>{copy.listen}</span>
-                  {duration && <span className="text-white/50">{duration}</span>}
+                  {duration && <span className="text-white/75">{duration}</span>}
                 </span>
               </div>
             </button>
@@ -228,7 +229,7 @@ export default function SeriesEpisodeCarousel({
 
       {slideCount > 1 && (
         <div className="mt-3 flex items-center justify-between px-1">
-          <span className="text-xs text-white/45" aria-live="polite">
+          <span className="text-xs text-white/75" aria-live="polite">
             {activeSlide === 0 ? copy.seriesCard : `${copy.episode} ${activeSlide} ${copy.of} ${episodes.length}`}
           </span>
           <div className="flex items-center gap-2">

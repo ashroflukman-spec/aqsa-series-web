@@ -13,11 +13,12 @@ import { useLanguage } from "../components/LanguageProvider";
 import { localizeContent, type TranslatableContent } from "../lib/localizedContent";
 import { videoCategoryLabel } from "../lib/videoCategory";
 import InstallAppCard from "../components/InstallAppCard";
+import ContentFeedback from "../components/ContentFeedback";
 
 const COPY = {
-  ms: { tagline: "Siri Pengetahuan Baitulmaqdis Kita Bermula Di Sini", search: "Cari siri...", admin: "Panel Admin", nowPlaying: "Sedang Dimainkan", item: "item", resume: "Sambung", videoHighlight: "Video Pilihan", seeAll: "Lihat Semua", fullLibrary: "Pustaka Penuh", seeAllVideos: "Lihat Semua Video", videosHint: "Teruskan ke Pustaka Video Aqsa Series", swipeOrTap: "Leret atau tekan", results: "Hasil Carian", popular: "Siri Audio Popular", series: "siri", loading: "Sedang memuatkan kandungan...", noSeries: "Tiada siri dijumpai.", speaker: "Penyampai", unknownSpeaker: "Penyampai tidak diketahui", unspecified: "Tidak dinyatakan" },
-  en: { tagline: "Your journey through Baitulmaqdis begins here", search: "Search series...", admin: "Admin dashboard", nowPlaying: "Continue Listening", item: "item", resume: "Resume", videoHighlight: "Featured Videos", seeAll: "View All", fullLibrary: "Full Library", seeAllVideos: "Explore All Videos", videosHint: "Open the Aqsa Series video library", swipeOrTap: "Swipe or tap", results: "Search Results", popular: "Popular Audio Series", series: "series", loading: "Loading content...", noSeries: "No series found.", speaker: "Speaker", unknownSpeaker: "Unknown speaker", unspecified: "Not specified" },
-  ar: { tagline: "رحلتك في معرفة بيت المقدس تبدأ هنا", search: "ابحث عن سلسلة...", admin: "لوحة الإدارة", nowPlaying: "تابع الاستماع", item: "عنصر", resume: "متابعة", videoHighlight: "فيديوهات مختارة", seeAll: "عرض الكل", fullLibrary: "المكتبة الكاملة", seeAllVideos: "استكشف جميع الفيديوهات", videosHint: "افتح مكتبة فيديو سلسلة الأقصى", swipeOrTap: "اسحب أو اضغط", results: "نتائج البحث", popular: "السلاسل الصوتية الشائعة", series: "سلاسل", loading: "جارٍ تحميل المحتوى...", noSeries: "لم يُعثر على سلاسل.", speaker: "المتحدث", unknownSpeaker: "متحدث غير معروف", unspecified: "غير مذكور" },
+  ms: { tagline: "Siri Pengetahuan Baitulmaqdis Kita Bermula Di Sini", search: "Cari siri...", admin: "Panel Admin", nowPlaying: "Sedang Dimainkan", item: "item", resume: "Sambung", videoHighlight: "Video Pilihan", seeAll: "Lihat Semua", fullLibrary: "Pustaka Penuh", seeAllVideos: "Lihat Semua Video", videosHint: "Teruskan ke Pustaka Video Aqsa Series", swipeOrTap: "Leret atau tekan", results: "Hasil Carian", popular: "Siri Audio Popular", series: "siri", loading: "Sedang memuatkan kandungan...", noSeries: "Belum ada siri untuk dipaparkan.", noResults: "Tiada siri sepadan dengan carian.", clearSearch: "Kosongkan carian", failed: "Kandungan belum dapat dimuatkan", failedDetail: "Sila cuba lagi sebentar lagi.", offlineDetail: "Peranti anda tidak bersambung ke internet. Semak sambungan dan cuba lagi.", retry: "Cuba lagi", videoSlide: "Pergi ke video pilihan", speaker: "Penyampai", unknownSpeaker: "Penyampai tidak diketahui", unspecified: "Tidak dinyatakan" },
+  en: { tagline: "Your journey through Baitulmaqdis begins here", search: "Search series...", admin: "Admin dashboard", nowPlaying: "Continue Listening", item: "item", resume: "Resume", videoHighlight: "Featured Videos", seeAll: "View All", fullLibrary: "Full Library", seeAllVideos: "Explore All Videos", videosHint: "Open the Aqsa Series video library", swipeOrTap: "Swipe or tap", results: "Search Results", popular: "Popular Audio Series", series: "series", loading: "Loading content...", noSeries: "No series available yet.", noResults: "No series match your search.", clearSearch: "Clear search", failed: "Content could not be loaded", failedDetail: "Please try again shortly.", offlineDetail: "Your device is offline. Check your connection and try again.", retry: "Try again", videoSlide: "Go to featured video", speaker: "Speaker", unknownSpeaker: "Unknown speaker", unspecified: "Not specified" },
+  ar: { tagline: "رحلتك في معرفة بيت المقدس تبدأ هنا", search: "ابحث عن سلسلة...", admin: "لوحة الإدارة", nowPlaying: "تابع الاستماع", item: "عنصر", resume: "متابعة", videoHighlight: "فيديوهات مختارة", seeAll: "عرض الكل", fullLibrary: "المكتبة الكاملة", seeAllVideos: "استكشف جميع الفيديوهات", videosHint: "افتح مكتبة فيديو سلسلة الأقصى", swipeOrTap: "اسحب أو اضغط", results: "نتائج البحث", popular: "السلاسل الصوتية الشائعة", series: "سلاسل", loading: "جارٍ تحميل المحتوى...", noSeries: "لا توجد سلاسل متاحة بعد.", noResults: "لا توجد سلاسل تطابق بحثك.", clearSearch: "مسح البحث", failed: "تعذّر تحميل المحتوى", failedDetail: "يرجى المحاولة مرة أخرى بعد قليل.", offlineDetail: "جهازك غير متصل بالإنترنت. تحقق من الاتصال وحاول مرة أخرى.", retry: "إعادة المحاولة", videoSlide: "الانتقال إلى الفيديو المختار", speaker: "المتحدث", unknownSpeaker: "متحدث غير معروف", unspecified: "غير مذكور" },
 } as const;
 
 type SeriesItem = {
@@ -110,6 +111,7 @@ export default function Page() {
   const [isSplashExiting, setIsSplashExiting] = useState(false);
   const [isSplashEntered, setIsSplashEntered] = useState(false);
   const [error, setError] = useState("");
+  const [retryCount, setRetryCount] = useState(0);
   const [activeVideoSlide, setActiveVideoSlide] = useState(0);
   const [isVideosTransitioning, setIsVideosTransitioning] = useState(false);
 
@@ -117,6 +119,11 @@ export default function Page() {
   const videosRedirectTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      const timer = window.setTimeout(() => setShowSplash(false), 0);
+      return () => window.clearTimeout(timer);
+    }
+
     const enterTimer = setTimeout(() => {
       setIsSplashEntered(true);
     }, 80);
@@ -139,6 +146,8 @@ export default function Page() {
   useEffect(() => {
     async function fetchData() {
       try {
+        setLoading(true);
+        setError("");
         const [seriesSnapshot, episodesSnapshot, speakersSnapshot, videosSnapshot] = await Promise.all([
           getDocs(query(collection(db, "series"), orderBy("sortOrder", "asc"))),
           getDocs(collection(db, "episodes")),
@@ -235,8 +244,8 @@ export default function Page() {
           .filter((item) => item.isPublished === true && item.isDeleted !== true);
 
         setVideos(videosData);
-      } catch (err: unknown) {
-        setError(err instanceof Error ? err.message : "Gagal memuatkan kandungan dari Firebase");
+      } catch {
+        setError(navigator.onLine ? "failed" : "offline");
       } finally {
         setLoading(false);
       }
@@ -257,7 +266,7 @@ export default function Page() {
         setRecentlyPlayed([]);
       }
     }
-  }, []);
+  }, [retryCount]);
 
   const normalized = search.trim().toLowerCase();
 
@@ -448,7 +457,7 @@ export default function Page() {
       )}
 
       <div
-        className={`w-full max-w-md px-6 py-10 pb-52 transition-all duration-1000 delay-300 ${
+        className={`w-full max-w-md px-6 py-10 pb-[calc(13rem+env(safe-area-inset-bottom))] transition-all duration-1000 delay-300 ${
           showSplash ? "opacity-0 translate-y-3" : "opacity-100 translate-y-0"
         }`}
       >
@@ -484,6 +493,7 @@ export default function Page() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder={copy.search}
+                aria-label={copy.search}
                 className="w-full rounded-full border border-white/10 bg-[#16191f] px-5 py-3.5 text-sm text-white shadow-inner outline-none placeholder:text-gray-500 focus:border-[#7A1F2B] focus:ring-2 focus:ring-[#7A1F2B]/20"
               />
             </div>
@@ -496,25 +506,26 @@ export default function Page() {
           <div className="mb-10">
             <div className="mb-5 flex items-center justify-between">
               <div>
-                <h2 className="text-[13px] font-semibold uppercase tracking-[0.22em] text-white/55">
+                <h2 className="text-[13px] font-semibold uppercase tracking-[0.16em] text-white/80">
                   {copy.nowPlaying}
                 </h2>
                 <div className="mt-2 h-[2px] w-14 rounded-full bg-[#D4AF37]" />
               </div>
 
-              <span className="text-xs text-white/35">
+              <span className="text-xs text-white/70">
                 {recentlyPlayed.length} {copy.item}
               </span>
             </div>
 
             <div className="space-y-4">
               {recentlyPlayed.map((item, index) => (
-                <div
+                <button
                   key={item.seriesId + item.episodeId + index}
+                  type="button"
                   onClick={() =>
                     router.push("/player/" + item.seriesId + "/" + item.episodeId)
                   }
-                  className="group cursor-pointer overflow-hidden rounded-[26px] border border-white/10 bg-white/[0.04] shadow-[0_14px_40px_rgba(0,0,0,0.22)] backdrop-blur-xl transition duration-300 hover:-translate-y-1 hover:border-white/15 hover:bg-white/[0.06] hover:shadow-[0_20px_54px_rgba(0,0,0,0.3)]"
+                  className="group block w-full overflow-hidden rounded-[26px] border border-white/10 bg-white/[0.04] text-start shadow-[0_14px_40px_rgba(0,0,0,0.22)] backdrop-blur-xl transition duration-300 hover:-translate-y-1 hover:border-white/15 hover:bg-white/[0.06] hover:shadow-[0_20px_54px_rgba(0,0,0,0.3)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E8D28A]"
                 >
                   <div className="flex items-center gap-4 p-4">
                     <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#7A1F2B] via-[#3a1620] to-[#151820] shadow-inner">
@@ -537,7 +548,7 @@ export default function Page() {
                         {localizeContent("episode", { id: item.episodeId, title: item.episodeTitle }, language).title}
                       </div>
 
-                      <div className="mt-1 text-sm text-white/45">
+                      <div className="mt-1 text-sm text-white/75">
                         {localizeContent("series", { id: item.seriesId, title: item.seriesTitle }, language).title}
                       </div>
 
@@ -546,7 +557,7 @@ export default function Page() {
                       </div>
                     </div>
                   </div>
-                </div>
+                </button>
               ))}
             </div>
           </div>
@@ -556,7 +567,7 @@ export default function Page() {
           <div className="mb-10">
             <div className="mb-5 flex items-center justify-between">
               <div>
-                <h2 className="text-[13px] font-semibold uppercase tracking-[0.22em] text-white/55">
+                <h2 className="text-[13px] font-semibold uppercase tracking-[0.16em] text-white/80">
                   {copy.videoHighlight}
                 </h2>
                 <div className="mt-2 h-[2px] w-14 rounded-full bg-[#7A1F2B]" />
@@ -564,9 +575,9 @@ export default function Page() {
 
               <button
   onClick={() => router.push("/videos")}
-  className="text-xs text-white/45 transition hover:text-white"
+  className="min-h-11 rounded-lg px-2 text-sm text-white/80 transition hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E8D28A]"
 >
-  {copy.seeAll} →
+  {copy.seeAll} {language === "ar" ? "←" : "→"}
 </button>
             </div>
 
@@ -577,10 +588,11 @@ export default function Page() {
                 className="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-2 video-highlight-scroll"
               >
                 {highlightVideos.map((video) => (
-                  <div
+                  <button
                     key={video.id}
+                    type="button"
                     onClick={() => router.push(`/videos?video=${video.id}`)}
-                    className="group w-[86%] shrink-0 snap-start cursor-pointer overflow-hidden rounded-[26px] border border-white/10 bg-white/[0.04] shadow-[0_14px_40px_rgba(0,0,0,0.22)] backdrop-blur-xl transition duration-300 hover:-translate-y-1 hover:border-white/15 hover:bg-white/[0.06] hover:shadow-[0_20px_54px_rgba(0,0,0,0.3)]"
+                    className="group w-[86%] shrink-0 snap-start overflow-hidden rounded-[26px] border border-white/10 bg-white/[0.04] text-start shadow-[0_14px_40px_rgba(0,0,0,0.22)] backdrop-blur-xl transition duration-300 hover:-translate-y-1 hover:border-white/15 hover:bg-white/[0.06] hover:shadow-[0_20px_54px_rgba(0,0,0,0.3)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E8D28A]"
                   >
                     <div className="relative h-48">
                       {video.thumbnailUrl ? (
@@ -595,8 +607,8 @@ export default function Page() {
 
                       <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-black/10 to-transparent" />
 
-                      <div className="absolute left-4 top-4">
-                        <span className="rounded-full border border-[#D4AF37]/30 bg-[#D4AF37]/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#E8D28A]">
+                      <div className="absolute start-4 top-4">
+                        <span className="rounded-full border border-[#D4AF37]/30 bg-[#D4AF37]/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#E8D28A]">
                           {videoCategoryLabel(video.category, language)}
                         </span>
                       </div>
@@ -607,16 +619,17 @@ export default function Page() {
                         {video.title}
                       </div>
 
-                      <div className="mt-1.5 text-sm text-white/45">
+                      <div className="mt-1.5 text-sm text-white/75">
                         {video.speaker || copy.unspecified}
                       </div>
                     </div>
-                  </div>
+                  </button>
                 ))}
 
-                <div
+                <button
+                  type="button"
                   onClick={navigateToVideos}
-                  className="group w-[86%] shrink-0 snap-start cursor-pointer overflow-hidden rounded-[26px] border border-white/10 bg-white/[0.04] shadow-[0_14px_40px_rgba(0,0,0,0.22)] backdrop-blur-xl transition duration-300 hover:-translate-y-1 hover:border-white/15 hover:bg-white/[0.06] hover:shadow-[0_20px_54px_rgba(0,0,0,0.3)]"
+                  className="group w-[86%] shrink-0 snap-start overflow-hidden rounded-[26px] border border-white/10 bg-white/[0.04] text-start shadow-[0_14px_40px_rgba(0,0,0,0.22)] backdrop-blur-xl transition duration-300 hover:-translate-y-1 hover:border-white/15 hover:bg-white/[0.06] hover:shadow-[0_20px_54px_rgba(0,0,0,0.3)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E8D28A]"
                 >
                   <div className="relative flex h-full min-h-[264px] flex-col justify-between overflow-hidden p-5">
                     <div className="absolute inset-0 bg-gradient-to-br from-[#7A1F2B]/35 via-[#1b2029] to-[#10141b]" />
@@ -624,7 +637,7 @@ export default function Page() {
                     <div className="absolute left-[-10px] bottom-[-20px] h-28 w-28 rounded-full bg-[#D4AF37]/10 blur-3xl" />
 
                     <div className="relative">
-                      <span className="rounded-full border border-[#D4AF37]/30 bg-[#D4AF37]/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#E8D28A]">
+                      <span className="rounded-full border border-[#D4AF37]/30 bg-[#D4AF37]/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#E8D28A]">
                         {copy.fullLibrary}
                       </span>
                     </div>
@@ -633,14 +646,14 @@ export default function Page() {
                       <div className="text-[24px] font-semibold leading-[1.2] text-white">
                         {copy.seeAllVideos}
                       </div>
-                      <div className="mt-2 text-sm text-white/55">
+                      <div className="mt-2 text-sm text-white/75">
                         {copy.videosHint}
                       </div>
                     </div>
 
                     <div className="relative mt-8 flex items-center justify-between">
                       <div className="text-sm font-medium text-white/80">
-                        {copy.swipeOrTap} →
+                        {copy.swipeOrTap} {language === "ar" ? "←" : "→"}
                       </div>
 
                       <div className="flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/[0.06]">
@@ -662,7 +675,7 @@ export default function Page() {
                       </div>
                     </div>
                   </div>
-                </div>
+                </button>
               </div>
             </div>
 
@@ -684,13 +697,11 @@ export default function Page() {
                     });
                     setActiveVideoSlide(index);
                   }}
-                  className={`h-2 rounded-full transition-all duration-200 ${
-                    activeVideoSlide === index
-                      ? "w-5 bg-white/75"
-                      : "w-2 bg-white/20"
-                  }`}
-                  aria-label={`Pergi ke video highlight ${index + 1}`}
-                />
+                  className="flex h-11 w-11 items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E8D28A]"
+                  aria-label={`${copy.videoSlide} ${index + 1}`}
+                >
+                  <span aria-hidden="true" className={`h-2 rounded-full transition-all duration-200 ${activeVideoSlide === index ? "w-5 bg-white/90" : "w-2 bg-white/45"}`} />
+                </button>
               ))}
             </div>
           </div>
@@ -698,36 +709,24 @@ export default function Page() {
 
         <div className="mb-5 flex items-center justify-between">
           <div>
-            <h2 className="text-[13px] font-semibold uppercase tracking-[0.22em] text-white/55">
+            <h2 className="text-[13px] font-semibold uppercase tracking-[0.16em] text-white/80">
               {normalized ? copy.results : copy.popular}
             </h2>
             <div className="mt-2 h-[2px] w-14 rounded-full bg-[#7A1F2B]" />
           </div>
 
           {!normalized && filteredSeries.length > 0 && (
-            <span className="text-xs text-white/35">
+            <span className="text-xs text-white/70">
               {filteredSeries.length} {copy.series}
             </span>
           )}
         </div>
 
-        {loading && (
-          <div className="rounded-2xl bg-[#1f232b] p-5 text-sm text-gray-300">
-            {copy.loading}
-          </div>
-        )}
+        {loading && <ContentFeedback kind="loading" title={copy.loading} />}
 
-        {!loading && error && (
-          <div className="rounded-2xl border border-red-500/30 bg-red-950/40 p-5 text-sm text-red-200">
-            {error}
-          </div>
-        )}
+        {!loading && error && <ContentFeedback kind="error" title={copy.failed} detail={error === "offline" ? copy.offlineDetail : copy.failedDetail} offline={error === "offline"} actionLabel={copy.retry} onAction={() => setRetryCount((count) => count + 1)} />}
 
-        {!loading && !error && filteredSeries.length === 0 && (
-          <div className="rounded-2xl bg-[#1f232b] p-5 text-sm text-gray-400">
-            {copy.noSeries}
-          </div>
-        )}
+        {!loading && !error && filteredSeries.length === 0 && <ContentFeedback kind="empty" title={normalized ? copy.noResults : copy.noSeries} actionLabel={normalized ? copy.clearSearch : undefined} onAction={normalized ? () => setSearch("") : undefined} />}
 
         {!loading && !error && filteredSeries.length > 0 && (
           <div className="space-y-9">

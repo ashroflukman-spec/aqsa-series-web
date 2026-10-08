@@ -8,11 +8,12 @@ import { db } from "../../lib/firebase";
 import PremiumShareModal from "../../components/PremiumShareModal";
 import { useLanguage } from "../../components/LanguageProvider";
 import { videoCategoryLabel } from "../../lib/videoCategory";
+import ContentFeedback from "../../components/ContentFeedback";
 
 const COPY = {
-  ms: { back: "Kembali", title: "Pustaka Video", subtitle: "Tonton video YouTube pilihan terus dalam aplikasi", search: "Cari video, penyampai atau kategori...", categories: "Kategori video", all: "Semua", loading: "Sedang memuatkan video...", failed: "Gagal memuatkan video.", share: "Kongsi video", speaker: "Penyampai", unknown: "Tidak dinyatakan", show: "Lihat Penerangan", hide: "Sorok Penerangan", empty: "Tiada video dijumpai.", thumbnail: "Tiada imej kecil" },
-  en: { back: "Back", title: "Video Library", subtitle: "Watch selected YouTube videos here", search: "Search videos, speakers or categories...", categories: "Video categories", all: "All", loading: "Loading videos...", failed: "Unable to load videos.", share: "Share video", speaker: "Speaker", unknown: "Not specified", show: "Show description", hide: "Hide description", empty: "No videos found.", thumbnail: "No thumbnail" },
-  ar: { back: "رجوع", title: "مكتبة الفيديو", subtitle: "شاهد مقاطع مختارة من يوتيوب هنا", search: "ابحث عن فيديو أو متحدث أو فئة...", categories: "فئات الفيديو", all: "الكل", loading: "جارٍ تحميل الفيديوهات...", failed: "تعذّر تحميل الفيديوهات.", share: "مشاركة الفيديو", speaker: "المتحدث", unknown: "غير مذكور", show: "عرض الوصف", hide: "إخفاء الوصف", empty: "لم يُعثر على فيديوهات.", thumbnail: "لا توجد صورة مصغرة" },
+  ms: { back: "Kembali", title: "Pustaka Video", subtitle: "Tonton video YouTube pilihan terus dalam aplikasi", search: "Cari video, penyampai atau kategori...", categories: "Kategori video", all: "Semua", loading: "Sedang memuatkan video...", failed: "Video belum dapat dimuatkan", failedDetail: "Sila cuba lagi sebentar lagi.", offlineDetail: "Peranti anda tidak bersambung ke internet. Semak sambungan dan cuba lagi.", retry: "Cuba lagi", noVideos: "Belum ada video untuk ditonton.", noResults: "Tiada video sepadan dengan carian atau kategori ini.", clearFilters: "Kosongkan carian dan kategori", count: "video", share: "Kongsi video", speaker: "Penyampai", unknown: "Tidak dinyatakan", show: "Lihat Penerangan", hide: "Sorok Penerangan", thumbnail: "Tiada imej kecil" },
+  en: { back: "Back", title: "Video Library", subtitle: "Watch selected YouTube videos here", search: "Search videos, speakers or categories...", categories: "Video categories", all: "All", loading: "Loading videos...", failed: "Videos could not be loaded", failedDetail: "Please try again shortly.", offlineDetail: "Your device is offline. Check your connection and try again.", retry: "Try again", noVideos: "No videos available yet.", noResults: "No videos match this search or category.", clearFilters: "Clear search and category", count: "videos", share: "Share video", speaker: "Speaker", unknown: "Not specified", show: "Show description", hide: "Hide description", thumbnail: "No thumbnail" },
+  ar: { back: "رجوع", title: "مكتبة الفيديو", subtitle: "شاهد مقاطع مختارة من يوتيوب هنا", search: "ابحث عن فيديو أو متحدث أو فئة...", categories: "فئات الفيديو", all: "الكل", loading: "جارٍ تحميل الفيديوهات...", failed: "تعذّر تحميل الفيديوهات", failedDetail: "يرجى المحاولة مرة أخرى بعد قليل.", offlineDetail: "جهازك غير متصل بالإنترنت. تحقق من الاتصال وحاول مرة أخرى.", retry: "إعادة المحاولة", noVideos: "لا توجد فيديوهات متاحة بعد.", noResults: "لا توجد فيديوهات تطابق البحث أو الفئة.", clearFilters: "مسح البحث والفئة", count: "فيديو", share: "مشاركة الفيديو", speaker: "المتحدث", unknown: "غير مذكور", show: "عرض الوصف", hide: "إخفاء الوصف", thumbnail: "لا توجد صورة مصغرة" },
 } as const;
 
 type VideoItem = {
@@ -75,6 +76,7 @@ function VideosPageContent() {
   const [videos, setVideos] = useState<VideoItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [retryCount, setRetryCount] = useState(0);
 
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState("All");
@@ -122,14 +124,14 @@ function VideosPageContent() {
         setVideos(data);
 
       } catch {
-        setError("failed");
+        setError(navigator.onLine ? "failed" : "offline");
       } finally {
         setLoading(false);
       }
     }
 
     loadVideos();
-  }, []);
+  }, [retryCount]);
 
   const activeVideo = useMemo(
     () => videos.find((video) => video.id === selectedVideoId) || videos[0] || null,
@@ -180,6 +182,8 @@ function VideosPageContent() {
       return bTime - aTime;
     });
 }, [videos, search, activeCategory, language]);
+
+  const visibleActiveVideo = filteredVideos.find((video) => video.id === selectedVideoId) || filteredVideos[0] || null;
 
   function selectCategory(category: string) {
     setActiveCategory(category);
@@ -234,10 +238,10 @@ function VideosPageContent() {
         <div className="absolute top-[260px] left-1/2 -translate-x-1/2 h-[320px] w-[320px] rounded-full bg-white/5 blur-[100px]" />
       </div>
 
-      <div className="relative w-full max-w-md px-6 py-10 pb-40">
+      <div className="relative w-full max-w-md px-6 py-10 pb-[calc(10rem+env(safe-area-inset-bottom))]">
         <button
           onClick={() => router.push("/")}
-          className="mb-6 text-sm text-gray-400"
+          className="mb-6 min-h-11 rounded-lg px-2 text-sm text-gray-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E8D28A]"
         >
           {language === "ar" ? "→" : "←"} {copy.back}
         </button>
@@ -254,6 +258,7 @@ function VideosPageContent() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={copy.search}
+              aria-label={copy.search}
               className="w-full rounded-full border border-white/10 bg-[#16191f] px-5 py-3.5 text-sm text-white shadow-inner outline-none placeholder:text-gray-500 focus:border-[#7A1F2B] focus:ring-2 focus:ring-[#7A1F2B]/20"
             />
           </div>
@@ -287,25 +292,17 @@ function VideosPageContent() {
           </div>
         </div>
 
-        {loading && (
-          <div className="rounded-2xl bg-[#1f232b] p-5 text-sm text-gray-300">
-            {copy.loading}
-          </div>
-        )}
+        {loading && <ContentFeedback kind="loading" title={copy.loading} />}
 
-        {!loading && error && (
-          <div className="rounded-2xl border border-red-500/30 bg-red-950/40 p-5 text-sm text-red-200">
-            {copy.failed}
-          </div>
-        )}
+        {!loading && error && <ContentFeedback kind="error" title={copy.failed} detail={error === "offline" ? copy.offlineDetail : copy.failedDetail} offline={error === "offline"} actionLabel={copy.retry} onAction={() => setRetryCount((count) => count + 1)} />}
 
-        {!loading && !error && activeVideo && (
+        {!loading && !error && visibleActiveVideo && (
           <div className="mb-8 overflow-hidden rounded-[28px] border border-white/10 bg-white/[0.04] shadow-[0_20px_60px_rgba(0,0,0,0.28)] backdrop-blur-xl">
             <div className="aspect-video w-full overflow-hidden bg-black">
               <iframe
                 className="h-full w-full"
-                src={`https://www.youtube.com/embed/${activeVideo.youtubeId}`}
-                title={activeVideo.title}
+                src={`https://www.youtube.com/embed/${visibleActiveVideo.youtubeId}`}
+                title={visibleActiveVideo.title}
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                 allowFullScreen
               />
@@ -314,12 +311,12 @@ function VideosPageContent() {
             <div className="p-4">
   <div className="mb-3 flex items-start justify-between gap-3">
     <div className="min-w-0">
-      <span className="inline-flex rounded-full border border-[#D4AF37]/30 bg-[#D4AF37]/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#E8D28A]">
-        {videoCategoryLabel(activeVideo.category, language)}
+      <span className="inline-flex rounded-full border border-[#D4AF37]/30 bg-[#D4AF37]/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#E8D28A]">
+        {videoCategoryLabel(visibleActiveVideo.category, language)}
       </span>
 
       <h2 className="mt-3 text-lg font-semibold leading-snug">
-        {activeVideo.title}
+        {visibleActiveVideo.title}
       </h2>
     </div>
 
@@ -333,23 +330,23 @@ function VideosPageContent() {
     </button>
   </div>
 
-              <p className="mt-2 text-sm text-white/55">
-                {copy.speaker} · {activeVideo.speaker || copy.unknown}
+              <p className="mt-2 text-sm text-white/75">
+                {copy.speaker} · {visibleActiveVideo.speaker || copy.unknown}
               </p>
 
-              {activeVideo.description && (
+              {visibleActiveVideo.description && (
   <div className="mt-3">
     <button
       type="button"
       onClick={() => setShowDescription((prev) => !prev)}
-      className="text-sm font-medium text-white/65 transition hover:text-white"
+      className="min-h-11 rounded-lg px-2 text-sm font-medium text-white/80 transition hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E8D28A]"
     >
       {showDescription ? copy.hide : copy.show}
     </button>
 
     {showDescription && (
       <p className="mt-3 text-sm leading-6 text-gray-400">
-        {activeVideo.description}
+        {visibleActiveVideo.description}
       </p>
     )}
   </div>
@@ -358,11 +355,7 @@ function VideosPageContent() {
           </div>
         )}
 
-        {!loading && !error && filteredVideos.length === 0 && (
-          <div className="rounded-2xl bg-[#1f232b] p-5 text-sm text-gray-400">
-            {copy.empty}
-          </div>
-        )}
+        {!loading && !error && filteredVideos.length === 0 && <ContentFeedback kind="empty" title={videos.length === 0 ? copy.noVideos : copy.noResults} actionLabel={videos.length > 0 ? copy.clearFilters : undefined} onAction={videos.length > 0 ? () => { setSearch(""); setActiveCategory("All"); } : undefined} />}
 
         {!loading && !error && filteredVideos.length > 0 && (
   activeCategory === "All" ? (
@@ -371,36 +364,38 @@ function VideosPageContent() {
         <div key={category}>
           <div className="mb-4 flex items-center justify-between">
             <div>
-              <h3 className="text-[13px] font-semibold uppercase tracking-[0.22em] text-white/55">
+              <h3 className="text-[13px] font-semibold uppercase tracking-[0.16em] text-white/80">
                 {videoCategoryLabel(category, language)}
               </h3>
               <div className="mt-2 h-[2px] w-12 rounded-full bg-[#7A1F2B]" />
             </div>
 
-            <span className="text-xs text-white/35">
-              {videosInCategory.length} video
+            <span className="text-xs text-white/70">
+              {videosInCategory.length} {copy.count}
             </span>
           </div>
 
           <div className="space-y-4">
             {videosInCategory.map((video) => {
-              const active = activeVideo?.id === video.id;
+              const active = visibleActiveVideo?.id === video.id;
 
               return (
                 <button
                   key={video.id}
+                  type="button"
+                  aria-pressed={active}
                   onClick={() => {
                     setShowDescription(false);
                     router.push(`/videos?video=${video.id}`);
                   }}
-                  className={`w-full overflow-hidden rounded-[24px] border text-left transition duration-200 ${
+                  className={`w-full overflow-hidden rounded-[24px] border text-start transition duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E8D28A] ${
                     active
                       ? "border-[#7A1F2B]/50 bg-white/[0.06] shadow-[0_18px_40px_rgba(122,31,43,0.18)]"
                       : "border-white/10 bg-white/[0.04] shadow-[0_14px_30px_rgba(0,0,0,0.18)]"
                   }`}
                 >
                   <div className="flex gap-4 p-4">
-                    <div className="relative h-24 w-36 shrink-0 overflow-hidden rounded-2xl bg-[#16191f]">
+                    <div className="relative h-20 w-24 min-[380px]:h-24 min-[380px]:w-32 shrink-0 overflow-hidden rounded-2xl bg-[#16191f]">
                       {video.thumbnailUrl ? (
                         <img
                           src={video.thumbnailUrl}
@@ -431,7 +426,7 @@ function VideosPageContent() {
 
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
-                        <span className="rounded-full border border-[#D4AF37]/25 bg-[#D4AF37]/10 px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.14em] text-[#E8D28A]">
+                        <span className="rounded-full border border-[#D4AF37]/25 bg-[#D4AF37]/10 px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.12em] text-[#E8D28A]">
   {videoCategoryLabel(video.category, language)}
 </span>
                       </div>
@@ -440,7 +435,7 @@ function VideosPageContent() {
                         {video.title}
                       </p>
 
-                      <p className="mt-2 text-sm text-white/45">
+                      <p className="mt-2 text-sm text-white/75">
                         {video.speaker || copy.unknown}
                       </p>
                     </div>
@@ -455,23 +450,25 @@ function VideosPageContent() {
   ) : (
     <div className="space-y-4">
       {filteredVideos.map((video) => {
-        const active = activeVideo?.id === video.id;
+        const active = visibleActiveVideo?.id === video.id;
 
         return (
           <button
             key={video.id}
+            type="button"
+            aria-pressed={active}
             onClick={() => {
               setShowDescription(false);
               router.push(`/videos?video=${video.id}`);
             }}
-            className={`w-full overflow-hidden rounded-[24px] border text-left transition duration-200 ${
+            className={`w-full overflow-hidden rounded-[24px] border text-start transition duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E8D28A] ${
               active
                 ? "border-[#7A1F2B]/50 bg-white/[0.06] shadow-[0_18px_40px_rgba(122,31,43,0.18)]"
                 : "border-white/10 bg-white/[0.04] shadow-[0_14px_30px_rgba(0,0,0,0.18)]"
             }`}
           >
             <div className="flex gap-4 p-4">
-              <div className="relative h-24 w-36 shrink-0 overflow-hidden rounded-2xl bg-[#16191f]">
+              <div className="relative h-20 w-24 min-[380px]:h-24 min-[380px]:w-32 shrink-0 overflow-hidden rounded-2xl bg-[#16191f]">
                 {video.thumbnailUrl ? (
                   <img
                     src={video.thumbnailUrl}
@@ -502,7 +499,7 @@ function VideosPageContent() {
 
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <span className="rounded-full border border-[#D4AF37]/25 bg-[#D4AF37]/10 px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.14em] text-[#E8D28A]">
+                  <span className="rounded-full border border-[#D4AF37]/25 bg-[#D4AF37]/10 px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.12em] text-[#E8D28A]">
   {videoCategoryLabel(video.category, language)}
 </span>
                 </div>
@@ -511,7 +508,7 @@ function VideosPageContent() {
                   {video.title}
                 </p>
 
-                <p className="mt-2 text-sm text-white/45">
+                <p className="mt-2 text-sm text-white/75">
                   {video.speaker || copy.unknown}
                 </p>
               </div>
@@ -523,15 +520,15 @@ function VideosPageContent() {
   )
 )}      
 
-        {activeVideo && (
+        {visibleActiveVideo && (
           <PremiumShareModal
             open={shareOpen}
             onClose={() => setShareOpen(false)}
-            title={activeVideo.title}
-            speaker={activeVideo.speaker}
-            category={activeVideo.category}
-            thumbnail={activeVideo.thumbnailUrl}
-            shareUrl={getShareUrl(activeVideo.id)}
+            title={visibleActiveVideo.title}
+            speaker={visibleActiveVideo.speaker}
+            category={visibleActiveVideo.category}
+            thumbnail={visibleActiveVideo.thumbnailUrl}
+            shareUrl={getShareUrl(visibleActiveVideo.id)}
           />
         )}
       </div>
@@ -539,19 +536,20 @@ function VideosPageContent() {
   );
 }
 
+function VideosLoadingFallback() {
+  const { language } = useLanguage();
+  return (
+    <main className="relative min-h-screen bg-[#0f1115] px-6 py-10 text-white">
+      <div className="mx-auto w-full max-w-md">
+        <ContentFeedback kind="loading" title={COPY[language].loading} />
+      </div>
+    </main>
+  );
+}
+
 export default function VideosPage() {
   return (
-    <Suspense
-      fallback={
-        <main className="relative min-h-screen overflow-hidden bg-[#0f1115] text-white flex justify-center">
-          <div className="relative w-full max-w-md px-6 py-10 pb-40">
-            <div className="rounded-2xl bg-[#1f232b] p-5 text-sm text-gray-300">
-              Sedang memuatkan video...
-            </div>
-          </div>
-        </main>
-      }
-    >
+    <Suspense fallback={<VideosLoadingFallback />}>
       <VideosPageContent />
     </Suspense>
   );

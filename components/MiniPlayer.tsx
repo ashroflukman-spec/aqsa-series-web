@@ -88,7 +88,7 @@ if (!shouldShow || !safeCurrentItem) {
 
   return (
     <div
-  className="fixed bottom-[calc(4.95rem+env(safe-area-inset-bottom))] left-1/2 z-40 w-[calc(100%-1.2rem)] max-w-md -translate-x-1/2"
+  className="fixed bottom-[calc(6rem+env(safe-area-inset-bottom))] left-1/2 z-40 w-[calc(100%-1.2rem)] max-w-md -translate-x-1/2"
 >
       <div className="animate-fade-in relative overflow-hidden rounded-t-[22px] border-x border-t border-white/10 bg-[#0f141d]/72 backdrop-blur-[24px] shadow-[0_14px_38px_rgba(0,0,0,0.42)] motion-reduce:animate-none">
         <div className="absolute inset-0 pointer-events-none">
@@ -106,7 +106,7 @@ if (!shouldShow || !safeCurrentItem) {
     `/player/${safeCurrentItem.seriesId}/${safeCurrentItem.episodeId}`
   )
 }
-          className="group relative flex w-full items-center gap-3 px-3 py-2.5 text-left transition active:scale-[0.995]"
+          className="group relative flex w-full items-center gap-3 px-3 py-2.5 text-start transition active:scale-[0.995] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E8D28A]"
         >
           <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-[13px] border border-white/15 bg-white/[0.04] shadow-[inset_0_1px_0_rgba(255,255,255,0.10)]">
             {safeCurrentItem.coverUrl ? (
@@ -126,13 +126,13 @@ if (!shouldShow || !safeCurrentItem) {
           </div>
 
           <div className="min-w-0 flex-1">
-            <p className="truncate text-[9px] font-semibold uppercase tracking-[0.22em] text-[#E7D7A2]">
+            <p className="truncate text-[11px] font-semibold uppercase tracking-[0.12em] text-[#E7D7A2]">
               {isPlaying ? copy.playing : copy.continue}
             </p>
             <p className="mt-1 truncate text-[13px] font-semibold text-white">
               {localizeContent("episode", { id: safeCurrentItem.episodeId, title: safeCurrentItem.episodeTitle }, language).title}
             </p>
-            <p className="mt-0.5 truncate text-[11px] text-white/72">
+            <p className="mt-0.5 truncate text-xs text-white/80">
               {localizeContent("series", { id: safeCurrentItem.seriesId, title: safeCurrentItem.seriesTitle }, language).title}
             </p>
           </div>

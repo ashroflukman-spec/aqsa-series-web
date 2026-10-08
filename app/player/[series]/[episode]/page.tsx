@@ -16,11 +16,12 @@ import {
 import { db } from "../../../../lib/firebase";
 import { useLanguage } from "../../../../components/LanguageProvider";
 import { localizeContent, type TranslatableContent } from "../../../../lib/localizedContent";
+import ContentFeedback from "../../../../components/ContentFeedback";
 
 const COPY = {
-  ms: { missingEpisode: "Episod tidak dijumpai", missingSeries: "Siri tidak dijumpai", loadFailed: "Gagal memuatkan episod", loading: "Memuatkan episod...", back: "Kembali ke Senarai Episod", playing: "Sedang Dimainkan", paused: "Dijeda", untitled: "Tanpa Tajuk", speaker: "Penyampai", unknownSpeaker: "Penyampai tidak diketahui", addMarker: "Tambah penanda", markerExists: "Penanda sudah ada sekitar", markerAdded: "Penanda ditambah pada", previous: "Sebelum", next: "Seterusnya", play: "Main", pause: "Jeda", noAudio: "Audio belum dimuat naik.", description: "Huraian Episod", noDescription: "Tiada huraian untuk episod ini.", reviewMarkers: "Penanda Ulang Kaji", markersHelp: "Simpan poin penting untuk ulang kaji kemudian", markersEmpty: "Belum ada penanda. Tekan butang penanda semasa audio sedang berjalan.", deleteMarker: "Padam penanda", marker: "Penanda", note: "Tulis nota atau poin penting di sini...", originalContent: "Huraian dalam bahasa asal", shareDescription: "Dengar episod ini di Aqsa Series." },
-  en: { missingEpisode: "Episode not found", missingSeries: "Series not found", loadFailed: "Unable to load episode", loading: "Loading episode...", back: "Back to episodes", playing: "Now Playing", paused: "Paused", untitled: "Untitled", speaker: "Speaker", unknownSpeaker: "Unknown speaker", addMarker: "Add marker", markerExists: "A marker already exists near", markerAdded: "Marker added at", previous: "Previous", next: "Next", play: "Play", pause: "Pause", noAudio: "Audio has not been uploaded.", description: "Episode Description", noDescription: "No description for this episode.", reviewMarkers: "Review Markers", markersHelp: "Save important points to review later", markersEmpty: "No markers yet. Add one while listening.", deleteMarker: "Delete marker", marker: "Marker", note: "Write a note or important point here...", originalContent: "Description shown in its original language", shareDescription: "Listen to this episode on Aqsa Series." },
-  ar: { missingEpisode: "لم يُعثر على الحلقة", missingSeries: "لم يُعثر على السلسلة", loadFailed: "تعذّر تحميل الحلقة", loading: "جارٍ تحميل الحلقة...", back: "العودة إلى الحلقات", playing: "قيد التشغيل", paused: "متوقف مؤقتًا", untitled: "بلا عنوان", speaker: "المتحدث", unknownSpeaker: "متحدث غير معروف", addMarker: "إضافة علامة", markerExists: "توجد علامة بالقرب من", markerAdded: "أُضيفت علامة عند", previous: "السابق", next: "التالي", play: "تشغيل", pause: "إيقاف مؤقت", noAudio: "لم يُرفع الملف الصوتي بعد.", description: "وصف الحلقة", noDescription: "لا يوجد وصف لهذه الحلقة.", reviewMarkers: "علامات المراجعة", markersHelp: "احفظ النقاط المهمة للرجوع إليها لاحقًا", markersEmpty: "لا توجد علامات بعد. أضف علامة أثناء الاستماع.", deleteMarker: "حذف العلامة", marker: "علامة", note: "اكتب ملاحظة أو نقطة مهمة هنا...", originalContent: "يُعرض الوصف بلغته الأصلية", shareDescription: "استمع إلى هذه الحلقة على Aqsa Series." },
+  ms: { missingEpisode: "Episod tidak dijumpai", missingSeries: "Siri tidak dijumpai", loadFailed: "Gagal memuatkan episod", offline: "Peranti anda tidak bersambung ke internet.", retry: "Cuba lagi", loading: "Memuatkan episod...", back: "Kembali ke Senarai Episod", playing: "Sedang Dimainkan", paused: "Dijeda", untitled: "Tanpa Tajuk", speaker: "Penyampai", unknownSpeaker: "Penyampai tidak diketahui", addMarker: "Tambah penanda", markerExists: "Penanda sudah ada sekitar", markerAdded: "Penanda ditambah pada", previous: "Sebelum", next: "Seterusnya", play: "Main", pause: "Jeda", noAudio: "Audio belum dimuat naik.", description: "Huraian Episod", noDescription: "Tiada huraian untuk episod ini.", reviewMarkers: "Penanda Ulang Kaji", markersHelp: "Simpan poin penting untuk ulang kaji kemudian", markersEmpty: "Belum ada penanda. Tekan butang penanda semasa audio sedang berjalan.", deleteMarker: "Padam penanda", marker: "Penanda", note: "Tulis nota atau poin penting di sini...", originalContent: "Huraian dalam bahasa asal", shareDescription: "Dengar episod ini di Aqsa Series." },
+  en: { missingEpisode: "Episode not found", missingSeries: "Series not found", loadFailed: "Unable to load episode", offline: "Your device is offline.", retry: "Try again", loading: "Loading episode...", back: "Back to episodes", playing: "Now Playing", paused: "Paused", untitled: "Untitled", speaker: "Speaker", unknownSpeaker: "Unknown speaker", addMarker: "Add marker", markerExists: "A marker already exists near", markerAdded: "Marker added at", previous: "Previous", next: "Next", play: "Play", pause: "Pause", noAudio: "Audio has not been uploaded.", description: "Episode Description", noDescription: "No description for this episode.", reviewMarkers: "Review Markers", markersHelp: "Save important points to review later", markersEmpty: "No markers yet. Add one while listening.", deleteMarker: "Delete marker", marker: "Marker", note: "Write a note or important point here...", originalContent: "Description shown in its original language", shareDescription: "Listen to this episode on Aqsa Series." },
+  ar: { missingEpisode: "لم يُعثر على الحلقة", missingSeries: "لم يُعثر على السلسلة", loadFailed: "تعذّر تحميل الحلقة", offline: "جهازك غير متصل بالإنترنت.", retry: "إعادة المحاولة", loading: "جارٍ تحميل الحلقة...", back: "العودة إلى الحلقات", playing: "قيد التشغيل", paused: "متوقف مؤقتًا", untitled: "بلا عنوان", speaker: "المتحدث", unknownSpeaker: "متحدث غير معروف", addMarker: "إضافة علامة", markerExists: "توجد علامة بالقرب من", markerAdded: "أُضيفت علامة عند", previous: "السابق", next: "التالي", play: "تشغيل", pause: "إيقاف مؤقت", noAudio: "لم يُرفع الملف الصوتي بعد.", description: "وصف الحلقة", noDescription: "لا يوجد وصف لهذه الحلقة.", reviewMarkers: "علامات المراجعة", markersHelp: "احفظ النقاط المهمة للرجوع إليها لاحقًا", markersEmpty: "لا توجد علامات بعد. أضف علامة أثناء الاستماع.", deleteMarker: "حذف العلامة", marker: "علامة", note: "اكتب ملاحظة أو نقطة مهمة هنا...", originalContent: "يُعرض الوصف بلغته الأصلية", shareDescription: "استمع إلى هذه الحلقة على Aqsa Series." },
 } as const;
 
 type EpisodeData = {
@@ -104,6 +105,7 @@ export default function PlayerPage() {
   const [speakerMap, setSpeakerMap] = useState<Record<string, string>>({});
   const [error, setError] = useState<{ routeKey: string; message: string } | null>(null);
   const [loadedRouteKey, setLoadedRouteKey] = useState("");
+  const [retryCount, setRetryCount] = useState(0);
   const routeSyncPendingRef = useRef(true);
 
   const [isMarkerFlash, setIsMarkerFlash] = useState(false);
@@ -296,7 +298,7 @@ export default function PlayerPage() {
         setSpeakerMap(nextSpeakerMap);
         setLoadedRouteKey(routeKey);
       } catch {
-        if (!cancelled) setError({ routeKey, message: "loadFailed" });
+        if (!cancelled) setError({ routeKey, message: navigator.onLine ? "loadFailed" : "offline" });
       }
     }
 
@@ -306,7 +308,7 @@ export default function PlayerPage() {
     return () => {
       cancelled = true;
     };
-  }, [episodeId, seriesId, routeKey]);
+  }, [episodeId, seriesId, routeKey, retryCount]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -475,9 +477,13 @@ const shareUrl =
 
 
   if (error?.routeKey === routeKey) {
+    const retryable = error.message === "loadFailed" || error.message === "offline";
     return (
-      <main className="flex min-h-screen items-center justify-center bg-[#0f1115] text-white">
-        <h1 className="text-xl">{copy[error.message as keyof typeof copy] || copy.loadFailed}</h1>
+      <main className="flex min-h-screen items-center justify-center bg-[#0f1115] px-6 pb-[calc(10rem+env(safe-area-inset-bottom))] text-white">
+        <div className="w-full max-w-md space-y-4">
+          <ContentFeedback kind="error" title={copy[error.message as keyof typeof copy] || copy.loadFailed} offline={error.message === "offline"} actionLabel={retryable ? copy.retry : undefined} onAction={retryable ? () => { setError(null); setLoadedRouteKey(""); setRetryCount((count) => count + 1); } : undefined} />
+          <button type="button" onClick={() => router.push(error.message === "missingSeries" ? "/library" : `/series/${seriesId}`)} className="min-h-11 rounded-xl px-3 text-sm font-semibold text-[#E8D28A] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E8D28A]">{copy.back}</button>
+        </div>
       </main>
     );
   }

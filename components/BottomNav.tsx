@@ -199,7 +199,7 @@ export default function BottomNav() {
                 type="button"
                 onClick={() => router.push(item.href)}
                 aria-current={item.active ? "page" : undefined}
-                className={`flex min-h-14 flex-col items-center justify-center rounded-[18px] px-1 py-2 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E8D28A] ${
+                className={`flex min-h-[4.25rem] min-w-0 flex-col items-center justify-center rounded-[18px] px-1 py-2 text-center transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E8D28A] ${
                   item.active
                     ? "bg-gradient-to-b from-[#a01f34] to-[#7A1F2B] text-white shadow-[0_8px_20px_rgba(122,31,43,0.40)]"
                     : "text-gray-300"
@@ -207,7 +207,7 @@ export default function BottomNav() {
               >
                 <Icon active={item.active} />
                 <span
-                  className={`mt-1 text-[10px] font-medium ${
+                  className={`mt-1 w-full text-center text-[11px] font-medium leading-tight [overflow-wrap:anywhere] ${
                     item.active ? "text-white" : "text-gray-300"
                   }`}
                 >
