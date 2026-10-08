@@ -14,6 +14,7 @@ import {
 } from "firebase/firestore";
 import { db } from "../../../lib/firebase";
 import AdminGuard from "../../../components/AdminGuard";
+import { useAuth } from "../../../components/AuthProvider";
 import { effectiveLinkStatus, type MonitoredVideo } from "../../../lib/videoLinkHealth";
 import type { Timestamp } from "firebase/firestore";
 
@@ -66,6 +67,7 @@ function getYouTubeThumbnail(youtubeId: string) {
 
 export default function AdminVideosPage() {
   const router = useRouter();
+  const { user } = useAuth();
 
   const [videos, setVideos] = useState<VideoItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -94,8 +96,11 @@ const [sourcePublishedAt, setSourcePublishedAt] = useState("");
 const [sourceThumbnailUrl, setSourceThumbnailUrl] = useState("");
 
   useEffect(() => {
-    if (new URLSearchParams(window.location.search).get("health") === "issue") setHealthFilter("issue");
-    loadVideos();
+    const timer = window.setTimeout(() => {
+      if (new URLSearchParams(window.location.search).get("health") === "issue") setHealthFilter("issue");
+      void loadVideos();
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, []);
 
   async function loadVideos() {
@@ -171,13 +176,20 @@ async function handleImportYouTubeMeta() {
       setError("Sila isi URL YouTube atau YouTube ID dahulu.");
       return;
     }
+    if (!user) {
+      setError("Sila log masuk sebagai admin untuk import metadata YouTube.");
+      return;
+    }
 
     const queryString = youtubeId.trim()
       ? `youtubeId=${encodeURIComponent(youtubeId.trim())}`
       : `url=${encodeURIComponent(youtubeUrl.trim())}`;
 
+    const token = await user.getIdToken();
     const response = await fetch(`/api/youtube-meta?${queryString}`, {
       method: "GET",
+      headers: { Authorization: `Bearer ${token}` },
+      cache: "no-store",
     });
 
     const data = await response.json();

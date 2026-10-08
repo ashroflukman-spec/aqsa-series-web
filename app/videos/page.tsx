@@ -2,9 +2,9 @@
 
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { collection, getDocs, query } from "firebase/firestore";
+import { getDocs } from "firebase/firestore";
 import { Share2 } from "lucide-react";
-import { db } from "../../lib/firebase";
+import { publishedContentQuery } from "../../lib/publicFirestore";
 import PremiumShareModal from "../../components/PremiumShareModal";
 import { useLanguage } from "../../components/LanguageProvider";
 import { videoCategoryLabel } from "../../lib/videoCategory";
@@ -93,8 +93,7 @@ function VideosPageContent() {
         setLoading(true);
         setError("");
 
-        const q = query(collection(db, "videos"));
-        const snapshot = await getDocs(q);
+        const snapshot = await getDocs(publishedContentQuery("videos"));
 
         const data: VideoItem[] = snapshot.docs
           .map((docItem) => {
@@ -119,7 +118,8 @@ function VideosPageContent() {
   isDeleted: docItem.data().isDeleted ?? false,
 };
           })
-          .filter((item) => item.isPublished === true && item.isDeleted !== true);
+          .filter((item) => item.isPublished === true && item.isDeleted !== true)
+          .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
 
         setVideos(data);
 

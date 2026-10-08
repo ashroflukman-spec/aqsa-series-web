@@ -1,9 +1,14 @@
-const CACHE_NAME = "aqsa-series-v2";
-const APP_SHELL = ["/", "/library", "/favorites", "/settings", "/manifest.webmanifest", "/icon.png", "/apple-icon.png"];
+const CACHE_NAME = "aqsa-series-static-v3";
+const STATIC_PATHS = new Set([
+  "/offline.html",
+  "/manifest.webmanifest",
+  "/icon.png",
+  "/apple-icon.png",
+]);
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL))
+    caches.open(CACHE_NAME).then((cache) => cache.addAll([...STATIC_PATHS]))
   );
   self.skipWaiting();
 });
@@ -23,33 +28,23 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
   const request = event.request;
+  const url = new URL(request.url);
 
-  if (request.method !== "GET") return;
+  if (request.method !== "GET" || url.origin !== self.location.origin) return;
+
+  if (request.mode === "navigate") {
+    event.respondWith(
+      fetch(request).catch(async () =>
+        (await caches.match("/offline.html")) ||
+        new Response("Offline", { status: 503 })
+      )
+    );
+    return;
+  }
+
+  if (!STATIC_PATHS.has(url.pathname)) return;
 
   event.respondWith(
-    fetch(request)
-      .then((response) => {
-        const responseClone = response.clone();
-
-        caches.open(CACHE_NAME).then((cache) => {
-          cache.put(request, responseClone).catch(() => {});
-        });
-
-        return response;
-      })
-      .catch(async () => {
-        const cached = await caches.match(request);
-        if (cached) return cached;
-
-        if (request.mode === "navigate") {
-          const homeFallback = await caches.match("/");
-          if (homeFallback) return homeFallback;
-        }
-
-        return new Response("Offline", {
-          status: 503,
-          statusText: "Offline",
-        });
-      })
+    caches.match(url.pathname).then((cached) => cached || fetch(request))
   );
 });

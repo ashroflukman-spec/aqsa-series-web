@@ -20,6 +20,14 @@ export type ActiveEpisode = {
   speakerName?: string;
 };
 
+type RecentEpisode = Pick<ActiveEpisode, "seriesId" | "episodeId" | "seriesTitle" | "episodeTitle" | "coverUrl">;
+
+function isRecentEpisode(value: unknown): value is RecentEpisode {
+  return typeof value === "object" && value !== null &&
+    "seriesId" in value && typeof value.seriesId === "string" &&
+    "episodeId" in value && typeof value.episodeId === "string";
+}
+
 type AudioContextType = {
   isPlaying: boolean;
   currentTime: number;
@@ -64,23 +72,16 @@ function updateContinueListeningStorage(item: ActiveEpisode) {
     localStorage.setItem("continueListening", JSON.stringify([payload]));
 
     const existingRecent = localStorage.getItem("recentlyPlayed");
-    let recentList = existingRecent ? JSON.parse(existingRecent) : [];
-
-    if (!Array.isArray(recentList)) {
-      recentList = [];
-    }
-
-    recentList = recentList.filter(
-      (x: any) =>
-        !(
-          x.seriesId === payload.seriesId && x.episodeId === payload.episodeId
+    const parsed: unknown = existingRecent ? JSON.parse(existingRecent) : [];
+    const recentList: RecentEpisode[] = Array.isArray(parsed)
+      ? parsed.filter(isRecentEpisode).filter((item) =>
+          item.seriesId !== payload.seriesId || item.episodeId !== payload.episodeId
         )
-    );
+      : [];
 
-    recentList.unshift(payload);
     localStorage.setItem(
       "recentlyPlayed",
-      JSON.stringify(recentList.slice(0, 10))
+      JSON.stringify([payload, ...recentList].slice(0, 10))
     );
   } catch {}
 }
@@ -116,7 +117,7 @@ export function AudioProvider({
   return audioRef.current;
 }, []);
 
-  const playEpisode = async (
+  const playEpisode = useCallback(async (
     episode: ActiveEpisode,
     nextQueue?: ActiveEpisode[]
   ) => {
@@ -141,12 +142,12 @@ export function AudioProvider({
 
     try {
       await audio.play();
-    } catch (err: any) {
-      if (err?.name !== "AbortError") {
+    } catch (err) {
+      if (!(err instanceof Error && err.name === "AbortError")) {
         console.error("Gagal main audio global:", err);
       }
     }
-  };
+  }, [activeEpisode, ensureAudio]);
 
   const pauseAudio = () => {
     const audio = ensureAudio();
@@ -163,8 +164,8 @@ export function AudioProvider({
       } else {
         audio.pause();
       }
-    } catch (err: any) {
-      if (err?.name !== "AbortError") {
+    } catch (err) {
+      if (!(err instanceof Error && err.name === "AbortError")) {
         console.error("Gagal toggle audio global:", err);
       }
     }
@@ -176,19 +177,19 @@ export function AudioProvider({
     setCurrentTime(time);
   };
 
-  const playNext = async () => {
+  const playNext = useCallback(async () => {
     if (currentQueueIndex < 0) return;
     const nextItem = queue[currentQueueIndex + 1];
     if (!nextItem) return;
     await playEpisode(nextItem, queue);
-  };
+  }, [currentQueueIndex, queue, playEpisode]);
 
-  const playPrev = async () => {
+  const playPrev = useCallback(async () => {
     if (currentQueueIndex <= 0) return;
     const prevItem = queue[currentQueueIndex - 1];
     if (!prevItem) return;
     await playEpisode(prevItem, queue);
-  };
+  }, [currentQueueIndex, queue, playEpisode]);
 
 useEffect(() => {
   if (typeof navigator === "undefined") return;
@@ -298,7 +299,7 @@ useEffect(() => {
       audio.removeEventListener("loadedmetadata", handleLoadedMetadata);
       audio.removeEventListener("ended", handleEnded);
     };
-  }, [currentQueueIndex, queue, activeEpisode]);
+  }, [currentQueueIndex, queue, activeEpisode, ensureAudio, playEpisode]);
 
   return (
     <AudioContext.Provider

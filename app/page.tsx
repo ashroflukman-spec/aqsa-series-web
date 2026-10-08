@@ -3,8 +3,8 @@
 import Image from "next/image";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { collection, getDocs, orderBy, query } from "firebase/firestore";
-import { db } from "../lib/firebase";
+import { getDocs } from "firebase/firestore";
+import { publishedContentQuery, publicSpeakersQuery } from "../lib/publicFirestore";
 import { useAuth } from "../components/AuthProvider";
 import SeriesEpisodeCarousel, {
   type CarouselEpisode,
@@ -149,10 +149,10 @@ export default function Page() {
         setLoading(true);
         setError("");
         const [seriesSnapshot, episodesSnapshot, speakersSnapshot, videosSnapshot] = await Promise.all([
-          getDocs(query(collection(db, "series"), orderBy("sortOrder", "asc"))),
-          getDocs(collection(db, "episodes")),
-          getDocs(collection(db, "speakers")),
-          getDocs(query(collection(db, "videos"), orderBy("sortOrder", "asc"))),
+          getDocs(publishedContentQuery("series")),
+          getDocs(publishedContentQuery("episodes")),
+          getDocs(publicSpeakersQuery()),
+          getDocs(publishedContentQuery("videos")),
         ]);
 
         const seriesData: SeriesItem[] = seriesSnapshot.docs
@@ -166,7 +166,8 @@ export default function Page() {
             isDeleted: docItem.data().isDeleted ?? false,
             translations: docItem.data().translations ?? undefined,
           }))
-          .filter((item) => item.isPublished === true && item.isDeleted !== true);
+          .filter((item) => item.isPublished === true && item.isDeleted !== true)
+          .sort((a, b) => a.sortOrder - b.sortOrder);
 
         setSeries(seriesData);
 
@@ -241,7 +242,8 @@ export default function Page() {
   isDeleted: docItem.data().isDeleted ?? false,
 };
           })
-          .filter((item) => item.isPublished === true && item.isDeleted !== true);
+          .filter((item) => item.isPublished === true && item.isDeleted !== true)
+          .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
 
         setVideos(videosData);
       } catch {
@@ -253,19 +255,17 @@ export default function Page() {
 
     fetchData();
 
-    const saved = localStorage.getItem("recentlyPlayed");
-    if (saved) {
+    const recentTimer = window.setTimeout(() => {
+      const saved = localStorage.getItem("recentlyPlayed");
+      if (!saved) return;
       try {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setRecentlyPlayed([parsed[0]]);
-        } else {
-          setRecentlyPlayed([]);
-        }
+        setRecentlyPlayed(Array.isArray(parsed) && parsed.length > 0 ? [parsed[0]] : []);
       } catch {
         setRecentlyPlayed([]);
       }
-    }
+    }, 0);
+    return () => window.clearTimeout(recentTimer);
   }, [retryCount]);
 
   const normalized = search.trim().toLowerCase();

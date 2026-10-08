@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { collection, doc, getDoc, getDocs } from "firebase/firestore";
+import { doc, getDoc, getDocs } from "firebase/firestore";
 import { db } from "../../../lib/firebase";
+import { publishedContentQuery, publicSpeakersQuery } from "../../../lib/publicFirestore";
 import { useAudio } from "../../../components/AudioProvider";
 import { useLanguage } from "../../../components/LanguageProvider";
 import { localizeContent, type TranslatableContent } from "../../../lib/localizedContent";
@@ -118,7 +119,7 @@ export default function SeriesPage() {
 
         setSeries(seriesData);
 
-        const episodesSnap = await getDocs(collection(db, "episodes"));
+        const episodesSnap = await getDocs(publishedContentQuery("episodes"));
 
         const filteredEpisodes: EpisodeItem[] = episodesSnap.docs
           .map((docItem) => ({
@@ -146,7 +147,7 @@ export default function SeriesPage() {
 
         setEpisodes(filteredEpisodes);
 
-        const speakersSnap = await getDocs(collection(db, "speakers"));
+        const speakersSnap = await getDocs(publicSpeakersQuery());
         const speakersData: SpeakerItem[] = speakersSnap.docs
           .map((docItem) => ({
             id: docItem.id,

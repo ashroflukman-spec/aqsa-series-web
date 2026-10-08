@@ -39,7 +39,7 @@ export default function AdminLoginPage() {
         return;
       }
       router.push("/admin");
-    } catch (err: any) {
+    } catch {
       setError("Login gagal. Sila semak email dan password.");
     } finally {
       setSubmitting(false);

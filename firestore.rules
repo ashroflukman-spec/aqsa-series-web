@@ -6,21 +6,25 @@ service cloud.firestore {
         request.auth.token.email == 'ashroflukman@gmail.com';
     }
 
-    // The current public pages list these collections and filter published items in the app.
+    function isPublishedContent() {
+      return resource.data.isPublished == true &&
+        resource.data.isDeleted == false;
+    }
+
     match /series/{id} {
-      allow read: if true;
+      allow read: if isAdmin() || isPublishedContent();
       allow write: if isAdmin();
     }
     match /episodes/{id} {
-      allow read: if true;
+      allow read: if isAdmin() || isPublishedContent();
       allow write: if isAdmin();
     }
     match /speakers/{id} {
-      allow read: if true;
+      allow read: if isAdmin() || resource.data.isDeleted == false;
       allow write: if isAdmin();
     }
     match /videos/{id} {
-      allow read: if true;
+      allow read: if isAdmin() || isPublishedContent();
       allow write: if isAdmin();
     }
   }

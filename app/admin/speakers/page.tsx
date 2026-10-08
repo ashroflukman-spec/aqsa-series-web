@@ -72,13 +72,6 @@ export default function AdminSpeakersPage() {
   }
 
   useEffect(() => {
-    if (!name) return;
-    if (!editingSpeakerId) {
-      setSlug(slugify(name));
-    }
-  }, [name, editingSpeakerId]);
-
-  useEffect(() => {
     return () => {
       if (photoPreview && photoPreview.startsWith("blob:")) {
         URL.revokeObjectURL(photoPreview);
@@ -107,15 +100,16 @@ export default function AdminSpeakersPage() {
         .filter((item) => item.isDeleted !== true);
 
       setSpeakers(data);
-    } catch (err: any) {
-      setError(err?.message || "Gagal memuatkan speaker.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Gagal memuatkan speaker.");
     } finally {
       setLoading(false);
     }
   }
 
   useEffect(() => {
-    loadSpeakers();
+    const timer = window.setTimeout(() => { void loadSpeakers(); }, 0);
+    return () => window.clearTimeout(timer);
   }, []);
 
   function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -195,8 +189,8 @@ export default function AdminSpeakersPage() {
 
       await loadSpeakers();
       setMessage("Speaker dipindahkan ke Trash.");
-    } catch (err: any) {
-      setError(err?.message || "Gagal memindahkan speaker ke Trash.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Gagal memindahkan speaker ke Trash.");
     } finally {
       setMovingToTrashId("");
     }
@@ -250,8 +244,8 @@ export default function AdminSpeakersPage() {
 
       resetForm();
       await loadSpeakers();
-    } catch (err: any) {
-      setError(err?.message || "Gagal menyimpan speaker.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Gagal menyimpan speaker.");
     } finally {
       setSaving(false);
     }
@@ -291,7 +285,11 @@ export default function AdminSpeakersPage() {
               </label>
               <input
                 value={name}
-                onChange={(e) => setName(e.target.value)}
+                onChange={(e) => {
+                  const nextName = e.target.value;
+                  setName(nextName);
+                  if (!editingSpeakerId) setSlug(slugify(nextName));
+                }}
                 placeholder="Contoh: Ustaz Ashrof"
                 className="w-full rounded-2xl bg-[#14161b] border border-white/10 px-4 py-3 text-sm text-white"
               />

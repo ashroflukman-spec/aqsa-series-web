@@ -4,7 +4,7 @@ import ShareEpisodeButton from "../../../../components/ShareEpisodeButton";
 import { useAudio } from "../../../../components/AudioProvider";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { collection, doc, getDoc, getDocs } from "firebase/firestore";
+import { doc, getDoc, getDocs } from "firebase/firestore";
 import {
   Play,
   Pause,
@@ -14,6 +14,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { db } from "../../../../lib/firebase";
+import { publishedContentQuery, publicSpeakersQuery } from "../../../../lib/publicFirestore";
 import { useLanguage } from "../../../../components/LanguageProvider";
 import { localizeContent, type TranslatableContent } from "../../../../lib/localizedContent";
 import ContentFeedback from "../../../../components/ContentFeedback";
@@ -235,7 +236,7 @@ export default function PlayerPage() {
           translations: seriesData.translations ?? undefined,
         };
 
-        const episodesSnap = await getDocs(collection(db, "episodes"));
+        const episodesSnap = await getDocs(publishedContentQuery("episodes"));
         const filteredEpisodes: EpisodeData[] = episodesSnap.docs
           .map((docItem) => ({
             id: docItem.id,
@@ -262,7 +263,7 @@ export default function PlayerPage() {
           )
           .sort((a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0));
 
-        const speakersSnap = await getDocs(collection(db, "speakers"));
+        const speakersSnap = await getDocs(publicSpeakersQuery());
         const speakersData: SpeakerItem[] = speakersSnap.docs
           .map((docItem) => ({
             id: docItem.id,

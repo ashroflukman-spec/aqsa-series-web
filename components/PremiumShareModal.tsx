@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { X, Link, Send, Facebook, Share2, Copy } from "lucide-react";
+import { X, Send, Facebook, Share2, Copy } from "lucide-react";
 
 type PremiumShareModalProps = {
   open: boolean;

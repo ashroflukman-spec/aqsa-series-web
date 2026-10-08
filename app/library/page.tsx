@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { collection, getDocs, orderBy, query } from "firebase/firestore";
-import { db } from "../../lib/firebase";
+import { getDocs } from "firebase/firestore";
+import { publishedContentQuery, publicSpeakersQuery } from "../../lib/publicFirestore";
 import { useLanguage } from "../../components/LanguageProvider";
 import { localizeContent, type TranslatableContent } from "../../lib/localizedContent";
 import ContentFeedback from "../../components/ContentFeedback";
@@ -71,14 +71,10 @@ export default function LibraryPage() {
       try {
         setLoading(true);
         setError("");
-        const seriesQuery = query(
-          collection(db, "series"),
-          orderBy("sortOrder", "asc")
-        );
         const [seriesSnapshot, episodesSnapshot, speakersSnapshot] = await Promise.all([
-          getDocs(seriesQuery),
-          getDocs(collection(db, "episodes")),
-          getDocs(collection(db, "speakers")),
+          getDocs(publishedContentQuery("series")),
+          getDocs(publishedContentQuery("episodes")),
+          getDocs(publicSpeakersQuery()),
         ]);
 
         const seriesData: SeriesItem[] = seriesSnapshot.docs
@@ -92,7 +88,8 @@ export default function LibraryPage() {
             isDeleted: docItem.data().isDeleted ?? false,
             translations: docItem.data().translations ?? undefined,
           }))
-          .filter((item) => item.isPublished === true && item.isDeleted !== true);
+          .filter((item) => item.isPublished === true && item.isDeleted !== true)
+          .sort((a, b) => a.sortOrder - b.sortOrder);
 
         const episodesData: EpisodeItem[] = episodesSnapshot.docs
           .map((docItem) => ({

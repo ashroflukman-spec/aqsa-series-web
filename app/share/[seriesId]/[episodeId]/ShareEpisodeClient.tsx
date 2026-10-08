@@ -2,9 +2,10 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { collection, doc, getDoc, getDocs } from "firebase/firestore";
+import { doc, getDoc, getDocs } from "firebase/firestore";
 import { Play, Pause, SkipBack, SkipForward } from "lucide-react";
 import { db } from "../../../../lib/firebase";
+import { publishedContentQuery, publicSpeakersQuery } from "../../../../lib/publicFirestore";
 import { useAudio } from "../../../../components/AudioProvider";
 import ShareEpisodeButton from "../../../../components/ShareEpisodeButton";
 import { useLanguage } from "../../../../components/LanguageProvider";
@@ -164,7 +165,7 @@ export default function ShareEpisodePage() {
           });
         }
 
-        const episodesSnap = await getDocs(collection(db, "episodes"));
+        const episodesSnap = await getDocs(publishedContentQuery("episodes"));
         const filteredEpisodes: EpisodeData[] = episodesSnap.docs
   .map((docItem) => ({
     id: docItem.id,
@@ -200,7 +201,7 @@ export default function ShareEpisodePage() {
 
         setSeriesEpisodes(filteredEpisodes);
 
-        const speakersSnap = await getDocs(collection(db, "speakers"));
+        const speakersSnap = await getDocs(publicSpeakersQuery());
         const speakersData: SpeakerItem[] = speakersSnap.docs
           .map((docItem) => ({
             id: docItem.id,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   collection,
@@ -122,11 +122,6 @@ export default function AdminSeriesPage() {
   }
 
   useEffect(() => {
-    if (!title) return;
-    setSlug(slugify(title));
-  }, [title]);
-
-  useEffect(() => {
     return () => {
       if (coverPreview && coverPreview.startsWith("blob:")) {
         URL.revokeObjectURL(coverPreview);
@@ -141,7 +136,7 @@ export default function AdminSeriesPage() {
     };
   }, [coverPreview, originalWorkCoverPreview]);
 
-  async function loadData() {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
 
@@ -161,8 +156,8 @@ export default function AdminSeriesPage() {
 
       setSpeakers(speakerData);
 
-      if (speakerData.length > 0 && !speakerId) {
-        setSpeakerId(speakerData[0].id);
+      if (speakerData.length > 0) {
+        setSpeakerId((current) => current || speakerData[0].id);
       }
 
       const seriesData: SeriesItem[] = seriesSnapshot.docs
@@ -205,11 +200,12 @@ export default function AdminSeriesPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
 
   useEffect(() => {
-    loadData();
-  }, []);
+    const timer = window.setTimeout(() => { void loadData(); }, 0);
+    return () => window.clearTimeout(timer);
+  }, [loadData]);
 
   function handleCoverChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -444,7 +440,11 @@ export default function AdminSeriesPage() {
         >
           <input
             value={title}
-            onChange={(e) => setTitle(e.target.value)}
+            onChange={(e) => {
+              const nextTitle = e.target.value;
+              setTitle(nextTitle);
+              if (!editingSeriesId) setSlug(slugify(nextTitle));
+            }}
             placeholder="Tajuk Series"
             className="w-full rounded-xl bg-[#14161b] px-4 py-3"
           />

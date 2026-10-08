@@ -6,6 +6,7 @@ import {
   collection,
   deleteDoc,
   doc,
+  type DocumentData,
   getDocs,
   query,
   serverTimestamp,
@@ -22,9 +23,9 @@ type TrashItem = {
   name?: string;
   description?: string;
   isDeleted?: boolean;
-  deletedAt?: any;
+  deletedAt?: unknown;
   type: "speaker" | "series" | "episode";
-  raw: any;
+  raw: DocumentData;
 };
 
 export default function AdminTrashPage() {
@@ -85,15 +86,16 @@ export default function AdminTrashPage() {
         .filter((i) => i.isDeleted === true);
 
       setItems([...speakers, ...series, ...episodes]);
-    } catch (err: any) {
-      setError(err?.message || "Gagal memuatkan Trash.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Gagal memuatkan Trash.");
     } finally {
       setLoading(false);
     }
   }
 
   useEffect(() => {
-    loadTrash();
+    const timer = window.setTimeout(() => { void loadTrash(); }, 0);
+    return () => window.clearTimeout(timer);
   }, []);
 
   const counts = useMemo(() => {
@@ -136,8 +138,8 @@ export default function AdminTrashPage() {
 
       await loadTrash();
       setMessage("Item berjaya dipulihkan.");
-    } catch (err: any) {
-      setError(err?.message || "Gagal restore item.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Gagal restore item.");
     } finally {
       setBusyId("");
     }
@@ -228,8 +230,8 @@ export default function AdminTrashPage() {
           `Speaker dipadam secara kekal. ${deletedSeriesCount} series dan ${deletedEpisodeCount} episode berkaitan turut dipadam.`
         );
       }
-    } catch (err: any) {
-      setError(err?.message || "Gagal memadam item secara kekal.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Gagal memadam item secara kekal.");
     } finally {
       setBusyId("");
     }
@@ -270,8 +272,8 @@ export default function AdminTrashPage() {
 
       await loadTrash();
       setMessage("Semua item berjaya dipulihkan.");
-    } catch (err: any) {
-      setError(err?.message || "Gagal restore semua item.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Gagal restore semua item.");
     } finally {
       setRestoringAll(false);
     }

@@ -4,24 +4,31 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build --webpack",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "check": "npm run lint && npm run build",
+    "test:rules": "firebase emulators:exec --only firestore --project demo-aqsa-series-rules 'node --test tests/firestore.rules.test.mjs'"
   },
   "dependencies": {
     "firebase": "^12.10.0",
+    "firebase-admin": "^14.5.0",
     "lucide-react": "^0.576.0",
-    "next": "16.1.6",
+    "next": "^16.4.0",
     "react": "19.2.3",
     "react-dom": "19.2.3"
   },
+  "overrides": {
+    "@grpc/grpc-js": "1.14.5"
+  },
   "devDependencies": {
+    "@firebase/rules-unit-testing": "^5.0.2",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.1.6",
+    "eslint-config-next": "^16.4.0",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

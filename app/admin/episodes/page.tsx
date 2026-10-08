@@ -552,10 +552,13 @@ async function handleGenerateShareCopy() {
     }));
   }
 
-  const seriesTitleMap: Record<string, string> = {};
-  seriesList.forEach((item) => {
-    seriesTitleMap[item.id] = item.title || item.id;
-  });
+  const seriesTitleMap = useMemo(() => {
+    const titles: Record<string, string> = {};
+    seriesList.forEach((item) => {
+      titles[item.id] = item.title || item.id;
+    });
+    return titles;
+  }, [seriesList]);
 
   const groupedEpisodes = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase();
@@ -583,7 +586,7 @@ async function handleGenerateShareCopy() {
     });
 
     return groups;
-  }, [episodes, searchTerm]);
+  }, [episodes, searchTerm, seriesTitleMap]);
 
   const visibleSeries = useMemo(() => {
     return seriesList.filter((series) => groupedEpisodes[series.id]?.length > 0);
