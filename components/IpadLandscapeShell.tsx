@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import { useLanguage } from "./LanguageProvider";
 
 const ZOOM_MIN = 1;
-const ZOOM_MAX = 1.8;
+const ZOOM_MAX = 1.4;
+const PHONE_VIEWPORT_WIDTH = 390;
+const PHONE_VIEWPORT_HEIGHT = 760;
 
 type FrameMessage =
   | { type: "aqsa:frame-route"; path: string }
@@ -46,11 +48,13 @@ export default function IpadLandscapeShell({ children }: { children: ReactNode }
   const [active, setActive] = useState(false);
   const [frameSrc, setFrameSrc] = useState("");
   const [zoom, setZoom] = useState(1);
+  const [viewportScale, setViewportScale] = useState(0.85);
   const activeRef = useRef(false);
   const framePathRef = useRef("");
   const zoomRef = useRef(1);
   const frameRef = useRef<HTMLIFrameElement>(null);
   const phoneRef = useRef<HTMLDivElement>(null);
+  const viewportRef = useRef<HTMLDivElement>(null);
   const pinchRef = useRef<{ distance: number; zoom: number } | null>(null);
 
   useEffect(() => {
@@ -181,6 +185,21 @@ export default function IpadLandscapeShell({ children }: { children: ReactNode }
     return () => window.removeEventListener("message", onMessage);
   }, [active]);
 
+  useLayoutEffect(() => {
+    if (!active || !viewportRef.current) return;
+    const viewport = viewportRef.current;
+    const updateScale = () => {
+      // clientWidth/Height ignore the outer phone zoom, so the two gestures
+      // never multiply the app's own sizing unexpectedly.
+      const scale = Math.min(viewport.clientWidth / PHONE_VIEWPORT_WIDTH, viewport.clientHeight / PHONE_VIEWPORT_HEIGHT);
+      if (scale > 0) setViewportScale(Math.round(scale * 10000) / 10000);
+    };
+    updateScale();
+    const observer = new ResizeObserver(updateScale);
+    observer.observe(viewport);
+    return () => observer.disconnect();
+  }, [active]);
+
   useEffect(() => {
     if (!active) {
       pinchRef.current = null;
@@ -229,7 +248,7 @@ export default function IpadLandscapeShell({ children }: { children: ReactNode }
   if (!active) return <>{children}</>;
 
   const copy = ZOOM_COPY[language];
-  const style = { "--aqsa-phone-zoom": zoom } as CSSProperties;
+  const style = { "--aqsa-phone-zoom": zoom, "--aqsa-viewport-scale": viewportScale } as CSSProperties;
 
   return (
     <div className="aqsa-ipad-stage is-active" style={style}>
@@ -239,7 +258,9 @@ export default function IpadLandscapeShell({ children }: { children: ReactNode }
           <span className="aqsa-iphone-side aqsa-iphone-side-volume" aria-hidden="true" />
           <span className="aqsa-iphone-side aqsa-iphone-side-power" aria-hidden="true" />
           <div className="aqsa-iphone-screen">
-            <iframe ref={frameRef} title="Aqsa Series" src={frameSrc} allow="autoplay; clipboard-read; clipboard-write; web-share; fullscreen" allowFullScreen />
+            <div className="aqsa-iphone-viewport" ref={viewportRef}>
+              <iframe ref={frameRef} title="Aqsa Series" src={frameSrc} allow="autoplay; clipboard-read; clipboard-write; web-share; fullscreen" allowFullScreen />
+            </div>
           </div>
           <span className="aqsa-iphone-island" aria-hidden="true" />
           <span className="aqsa-iphone-home-indicator" aria-hidden="true" />
