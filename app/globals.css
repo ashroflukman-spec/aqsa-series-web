@@ -109,3 +109,225 @@ html[data-compact-mode="true"] main .p-5 {
 html[data-compact-mode="true"] main .mb-8 {
   margin-bottom: 1rem;
 }
+
+/* A real, scrollable app viewport inside an iPhone silhouette on iPad landscape. */
+.aqsa-ipad-stage,
+.aqsa-ipad-space,
+.aqsa-iphone,
+.aqsa-iphone-screen {
+  display: contents;
+}
+
+.aqsa-ipad-atmosphere,
+.aqsa-iphone-side,
+.aqsa-iphone-island,
+.aqsa-iphone-home-indicator,
+.aqsa-ipad-zoom {
+  display: none;
+}
+
+.aqsa-ipad-stage.is-active {
+  --aqsa-phone-height: min(840px, calc(100dvh - 44px));
+  --aqsa-phone-width: calc(var(--aqsa-phone-height) * 0.49);
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  display: block;
+  overflow: auto;
+  overscroll-behavior: contain;
+  background:
+    radial-gradient(ellipse 47% 70% at 50% 64%, rgba(153, 25, 38, 0.47), transparent 72%),
+    radial-gradient(ellipse 60% 30% at 50% 108%, rgba(226, 83, 43, 0.38), transparent 70%),
+    linear-gradient(130deg, #090506 0%, #190709 43%, #090507 100%);
+  isolation: isolate;
+}
+
+.aqsa-ipad-stage.is-active::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.35;
+  background:
+    linear-gradient(115deg, transparent 20%, rgba(238, 77, 40, 0.10) 48%, transparent 72%),
+    radial-gradient(ellipse 75% 18% at 50% 100%, rgba(247, 130, 70, 0.32), transparent 70%);
+}
+
+.aqsa-ipad-stage.is-active .aqsa-ipad-atmosphere {
+  display: block;
+  position: fixed;
+  inset: 5% 8% -17%;
+  pointer-events: none;
+  border: 1px solid rgba(171, 88, 51, 0.19);
+  border-bottom: 0;
+  border-radius: 47% 47% 0 0 / 26% 26% 0 0;
+  box-shadow: inset 0 0 72px rgba(182, 48, 41, 0.08), 0 0 28px rgba(186, 81, 45, 0.10);
+}
+
+.aqsa-ipad-stage.is-active .aqsa-ipad-atmosphere::after {
+  content: "";
+  position: absolute;
+  inset: 3% 3% 0;
+  border: 1px solid rgba(186, 88, 48, 0.13);
+  border-bottom: 0;
+  border-radius: inherit;
+}
+
+.aqsa-ipad-stage.is-active .aqsa-ipad-space {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: max(100%, calc(var(--aqsa-phone-width) * var(--aqsa-phone-zoom) + 26px));
+  min-height: max(100%, calc(var(--aqsa-phone-height) * var(--aqsa-phone-zoom) + 26px));
+  padding: 13px;
+}
+
+.aqsa-ipad-stage.is-active .aqsa-iphone {
+  position: relative;
+  display: block;
+  flex: none;
+  width: var(--aqsa-phone-width);
+  height: var(--aqsa-phone-height);
+  padding: 8px;
+  border: 2px solid #62666a;
+  border-radius: 54px;
+  background: linear-gradient(115deg, #050606, #292c30 15%, #030405 50%, #36393c 84%, #060708);
+  box-shadow:
+    inset 0 0 0 2px #050607,
+    inset 0 0 0 5px #22262a,
+    0 0 0 1px rgba(255, 255, 255, 0.13),
+    0 22px 64px rgba(0, 0, 0, 0.72),
+    0 0 90px rgba(183, 33, 38, 0.30);
+  transform: scale(var(--aqsa-phone-zoom));
+  transform-origin: center;
+  touch-action: pan-x pan-y;
+}
+
+.aqsa-ipad-stage.is-active .aqsa-iphone-screen {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding-top: 31px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  border-radius: 45px;
+  background: #0f1115;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  transform: translateZ(0);
+}
+
+.aqsa-ipad-stage.is-active .aqsa-iphone-screen::-webkit-scrollbar {
+  display: none;
+}
+
+.aqsa-ipad-stage.is-active .aqsa-iphone-screen main {
+  min-height: 100% !important;
+}
+
+.aqsa-ipad-stage.is-active .aqsa-iphone::before {
+  content: "";
+  position: absolute;
+  top: 9px;
+  right: 9px;
+  left: 9px;
+  z-index: 10000;
+  height: 46px;
+  border-radius: 45px 45px 0 0;
+  background: linear-gradient(#0f1115 0%, rgba(15, 17, 21, 0.96) 54%, transparent);
+  pointer-events: none;
+}
+
+.aqsa-ipad-stage.is-active .aqsa-iphone-island {
+  display: block;
+  position: absolute;
+  top: 17px;
+  left: 50%;
+  z-index: 10001;
+  width: 27%;
+  height: 21px;
+  border-radius: 999px;
+  background: #020304;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.04);
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.aqsa-ipad-stage.is-active .aqsa-iphone-home-indicator {
+  display: block;
+  position: absolute;
+  z-index: 10001;
+  bottom: 12px;
+  left: 50%;
+  width: 29%;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(245, 245, 245, 0.8);
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.aqsa-ipad-stage.is-active .aqsa-iphone-side {
+  display: block;
+  position: absolute;
+  width: 3px;
+  background: linear-gradient(#6d7277, #1c1f23 18%, #4a4e53 85%, #131619);
+  box-shadow: 1px 0 2px rgba(0, 0, 0, 0.5);
+}
+
+.aqsa-ipad-stage.is-active .aqsa-iphone-side-volume {
+  top: 21%;
+  left: -5px;
+  height: 17%;
+  border-radius: 3px 0 0 3px;
+}
+
+.aqsa-ipad-stage.is-active .aqsa-iphone-side-power {
+  top: 25%;
+  right: -5px;
+  height: 11%;
+  border-radius: 0 3px 3px 0;
+}
+
+.aqsa-ipad-stage.is-active .aqsa-ipad-zoom {
+  position: fixed;
+  right: max(18px, env(safe-area-inset-right));
+  bottom: max(18px, env(safe-area-inset-bottom));
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid rgba(232, 210, 138, 0.25);
+  border-radius: 999px;
+  background: rgba(16, 17, 20, 0.82);
+  color: #e8d28a;
+  direction: ltr;
+  backdrop-filter: blur(16px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+.aqsa-ipad-stage.is-active .aqsa-ipad-zoom button {
+  min-width: 35px;
+  min-height: 35px;
+  border-radius: 999px;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.aqsa-ipad-stage.is-active .aqsa-ipad-zoom button:nth-child(2) {
+  min-width: 54px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.aqsa-ipad-stage.is-active .aqsa-ipad-zoom button:focus-visible {
+  outline: 2px solid #e8d28a;
+  outline-offset: 2px;
+}
+
+.aqsa-ipad-stage.is-active .aqsa-ipad-zoom button:disabled {
+  opacity: 0.35;
+}

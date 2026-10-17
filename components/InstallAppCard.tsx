@@ -6,6 +6,7 @@ import { createPortal } from "react-dom";
 import { Download, Share2, X } from "lucide-react";
 import { useInstall } from "./InstallProvider";
 import { useLanguage } from "./LanguageProvider";
+import { getAppOverlayRoot } from "./appOverlayRoot";
 
 const DISMISS_KEY = "aqsa-install-nudge-until";
 const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
@@ -227,7 +228,7 @@ export default function InstallAppCard({ surface }: { surface: "home" | "setting
             <button type="button" onClick={() => setGuideOpen(false)} className="mt-6 min-h-11 w-full rounded-xl bg-white/10 px-4 py-2.5 text-sm font-semibold text-white">{copy.close}</button>
           </div>
         </div>,
-        document.body
+        getAppOverlayRoot()
       )}
     </>
   );

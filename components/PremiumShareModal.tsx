@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { X, Send, Facebook, Share2, Copy } from "lucide-react";
+import { getAppOverlayRoot } from "./appOverlayRoot";
 
 type PremiumShareModalProps = {
   open: boolean;
@@ -52,7 +54,7 @@ export default function PremiumShareModal({
     }
   };
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-end sm:items-center justify-center">
       <div className="w-full sm:max-w-md max-h-[92vh] overflow-y-auto rounded-t-3xl sm:rounded-3xl bg-[#10131a] border border-white/10 shadow-2xl text-white">
         <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
@@ -232,6 +234,7 @@ export default function PremiumShareModal({
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    getAppOverlayRoot()
   );
 }

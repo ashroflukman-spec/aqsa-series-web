@@ -7,6 +7,7 @@ import BottomNav from "../components/BottomNav";
 import PWARegister from "../components/PWARegister";
 import { LanguageProvider } from "../components/LanguageProvider";
 import { InstallProvider } from "../components/InstallProvider";
+import IpadLandscapeShell from "../components/IpadLandscapeShell";
 import type { AppLanguage } from "../components/LanguageProvider";
 import { cookies } from "next/headers";
 
@@ -47,9 +48,11 @@ export default async function RootLayout({
             <AuthProvider>
               <AudioProvider>
                 <PWARegister />
-                {children}
-                <MiniPlayer />
-                <BottomNav />
+                <IpadLandscapeShell>
+                  {children}
+                  <MiniPlayer />
+                  <BottomNav />
+                </IpadLandscapeShell>
               </AudioProvider>
             </AuthProvider>
           </InstallProvider>

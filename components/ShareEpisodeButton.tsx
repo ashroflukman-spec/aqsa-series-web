@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { Copy, Facebook, Send, Share2, X } from "lucide-react";
 import { useLanguage } from "./LanguageProvider";
+import { getAppOverlayRoot } from "./appOverlayRoot";
 
 const COPY = {
   ms: { tagline: "Siri Pengetahuan Baitulmaqdis kita bermula di sini.", listen: "Dengar di Aqsa Series:", share: "Kongsi Episod", copy: "Salin", copied: "Disalin", more: "Lainnya", hint: "Pautan ini akan membawa pengguna terus ke halaman episod audio di Aqsa Series.", linkLabel: "Pautan episod", copyFailed: "Salinan automatik gagal. Sila salin pautan di bawah.", shareFailed: "Menu kongsi tidak dapat dibuka. Gunakan Salin atau pilihan aplikasi di atas.", copiedForMore: "Mesej disalin. Tampal dalam aplikasi pilihan anda." },
@@ -92,7 +94,7 @@ export default function ShareEpisodeButton({
         </button>
       </div>
 
-      {open && (
+      {open && createPortal(
         <div className="fixed inset-0 z-[9999] flex items-end justify-center bg-black/70 px-4 pb-5 backdrop-blur-sm sm:items-center sm:pb-0" role="presentation" onClick={() => setOpen(false)}>
           <div role="dialog" aria-modal="true" aria-labelledby="episode-share-heading" className="max-h-[calc(100dvh-2rem)] w-full max-w-sm overflow-y-auto rounded-3xl border border-white/10 bg-[#11141b] p-5 text-white shadow-2xl" onClick={(event) => event.stopPropagation()} onKeyDown={(event) => { if (event.key === "Escape") setOpen(false); }}>
             <div className="mb-4 flex items-center justify-between">
@@ -190,7 +192,8 @@ export default function ShareEpisodeButton({
             {feedback && <p role="status" className="mt-3 rounded-xl border border-[#D4AF37]/25 bg-[#D4AF37]/10 p-3 text-xs leading-relaxed text-[#E8D28A]">{feedback}</p>}
             {feedback === copy.copyFailed && <input aria-label={copy.linkLabel} readOnly value={shareUrl} onFocus={(event) => event.currentTarget.select()} className="mt-2 w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-xs text-white" />}
           </div>
-        </div>
+        </div>,
+        getAppOverlayRoot()
       )}
     </>
   );
