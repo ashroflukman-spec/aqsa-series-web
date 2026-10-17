@@ -44,18 +44,18 @@ export default async function RootLayout({
     <html lang={language || "ms"} dir={language === "ar" ? "rtl" : "ltr"}>
       <body className="bg-gradient-to-b from-[#0f1115] to-[#1a1d24]">
         <LanguageProvider initialLanguage={language}>
-          <InstallProvider>
-            <AuthProvider>
-              <AudioProvider>
-                <PWARegister />
-                <IpadLandscapeShell>
+          <IpadLandscapeShell>
+            <InstallProvider>
+              <AuthProvider>
+                <AudioProvider>
+                  <PWARegister />
                   {children}
                   <MiniPlayer />
                   <BottomNav />
-                </IpadLandscapeShell>
-              </AudioProvider>
-            </AuthProvider>
-          </InstallProvider>
+                </AudioProvider>
+              </AuthProvider>
+            </InstallProvider>
+          </IpadLandscapeShell>
         </LanguageProvider>
       </body>
     </html>

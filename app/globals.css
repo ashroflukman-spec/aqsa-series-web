@@ -140,6 +140,11 @@ html[data-compact-mode="true"] main .mb-8 {
     radial-gradient(ellipse 60% 30% at 50% 108%, rgba(226, 83, 43, 0.38), transparent 70%),
     linear-gradient(130deg, #090506 0%, #190709 43%, #090507 100%);
   isolation: isolate;
+  scrollbar-width: none;
+}
+
+.aqsa-ipad-stage.is-active::-webkit-scrollbar {
+  display: none;
 }
 
 .aqsa-ipad-stage.is-active::before {
@@ -210,21 +215,29 @@ html[data-compact-mode="true"] main .mb-8 {
   width: 100%;
   height: 100%;
   padding-top: 31px;
-  overflow: auto;
+  padding-bottom: 20px;
+  overflow: hidden;
   overscroll-behavior: contain;
   border-radius: 45px;
   background: #0f1115;
   scrollbar-width: none;
-  -webkit-overflow-scrolling: touch;
   transform: translateZ(0);
 }
 
-.aqsa-ipad-stage.is-active .aqsa-iphone-screen::-webkit-scrollbar {
-  display: none;
+.aqsa-ipad-stage.is-active .aqsa-iphone-screen iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: #0f1115;
 }
 
-.aqsa-ipad-stage.is-active .aqsa-iphone-screen main {
-  min-height: 100% !important;
+html[data-aqsa-embedded="true"] {
+  scrollbar-width: none;
+}
+
+html[data-aqsa-embedded="true"]::-webkit-scrollbar {
+  display: none;
 }
 
 .aqsa-ipad-stage.is-active .aqsa-iphone::before {

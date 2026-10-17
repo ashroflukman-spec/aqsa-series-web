@@ -7,6 +7,18 @@ import { useLanguage } from "./LanguageProvider";
 const ZOOM_MIN = 1;
 const ZOOM_MAX = 1.8;
 
+type FrameMessage =
+  | { type: "aqsa:frame-route"; path: string }
+  | { type: "aqsa:frame-pinch"; phase: "start" | "move" | "end"; distance: number };
+
+function currentPath() {
+  return window.location.pathname + window.location.search + window.location.hash;
+}
+
+function isPublicApp(path: string) {
+  return !/^\/(admin|share|a)(\/|$)/.test(path);
+}
+
 const ZOOM_COPY = {
   ms: { controls: "Saiz paparan telefon", smaller: "Kecilkan paparan", reset: "Pulihkan saiz asal", larger: "Besarkan paparan" },
   en: { controls: "Phone display size", smaller: "Zoom out", reset: "Reset zoom", larger: "Zoom in" },
@@ -30,23 +42,101 @@ function touchDistance(touches: TouchList) {
 
 export default function IpadLandscapeShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const { language } = useLanguage();
+  const { language, setLanguage } = useLanguage();
   const [active, setActive] = useState(false);
+  const [frameSrc, setFrameSrc] = useState("");
   const [zoom, setZoom] = useState(1);
+  const activeRef = useRef(false);
+  const framePathRef = useRef("");
   const zoomRef = useRef(1);
+  const frameRef = useRef<HTMLIFrameElement>(null);
   const phoneRef = useRef<HTMLDivElement>(null);
   const pinchRef = useRef<{ distance: number; zoom: number } | null>(null);
 
   useEffect(() => {
+    if (window.self !== window.top) return;
+    const syncLanguage = (event: StorageEvent) => {
+      if (event.key === "aqsa-language" && (event.newValue === "ms" || event.newValue === "en" || event.newValue === "ar")) {
+        setLanguage(event.newValue);
+      }
+    };
+    window.addEventListener("storage", syncLanguage);
+    return () => window.removeEventListener("storage", syncLanguage);
+  }, [setLanguage]);
+
+  // A separate document gives the app a real phone width for media queries,
+  // fixed dialogs, navigation, and all other viewport dependent UI.
+  useEffect(() => {
+    if (window.self === window.top) return;
+    document.documentElement.dataset.aqsaEmbedded = "true";
+    const notifyRoute = () => {
+      window.parent.postMessage({ type: "aqsa:frame-route", path: currentPath() } satisfies FrameMessage, window.location.origin);
+    };
+    const originalPush = history.pushState;
+    const originalReplace = history.replaceState;
+    history.pushState = function (...args) {
+      originalPush.apply(this, args);
+      notifyRoute();
+    };
+    history.replaceState = function (...args) {
+      originalReplace.apply(this, args);
+      notifyRoute();
+    };
+    window.addEventListener("popstate", notifyRoute);
+    window.addEventListener("hashchange", notifyRoute);
+    notifyRoute();
+
+    const sendPinch = (phase: "start" | "move" | "end", distance = 0) => {
+      window.parent.postMessage({ type: "aqsa:frame-pinch", phase, distance } satisfies FrameMessage, window.location.origin);
+    };
+    const onTouchStart = (event: TouchEvent) => {
+      if (event.touches.length === 2) sendPinch("start", touchDistance(event.touches));
+    };
+    const onTouchMove = (event: TouchEvent) => {
+      if (event.touches.length !== 2) return;
+      event.preventDefault();
+      sendPinch("move", touchDistance(event.touches));
+    };
+    const onTouchEnd = (event: TouchEvent) => {
+      if (event.touches.length < 2) sendPinch("end");
+    };
+    document.addEventListener("touchstart", onTouchStart, { passive: true });
+    document.addEventListener("touchmove", onTouchMove, { passive: false });
+    document.addEventListener("touchend", onTouchEnd);
+    document.addEventListener("touchcancel", onTouchEnd);
+    return () => {
+      delete document.documentElement.dataset.aqsaEmbedded;
+      history.pushState = originalPush;
+      history.replaceState = originalReplace;
+      window.removeEventListener("popstate", notifyRoute);
+      window.removeEventListener("hashchange", notifyRoute);
+      document.removeEventListener("touchstart", onTouchStart);
+      document.removeEventListener("touchmove", onTouchMove);
+      document.removeEventListener("touchend", onTouchEnd);
+      document.removeEventListener("touchcancel", onTouchEnd);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (window.self !== window.top) return;
     const orientation = window.matchMedia("(orientation: landscape)");
     const update = () => {
-      const publicApp = !/^\/(admin|share|a)(\/|$)/.test(pathname);
       const preview = process.env.NODE_ENV === "development" && (
         new URLSearchParams(window.location.search).has("preview-ipad") ||
         window.sessionStorage.getItem("aqsa-preview-ipad") === "1"
       );
       if (preview) window.sessionStorage.setItem("aqsa-preview-ipad", "1");
-      setActive(publicApp && orientation.matches && (isIpad() || preview));
+      const shouldFrame = isPublicApp(pathname) && orientation.matches && (isIpad() || preview);
+      if (activeRef.current && !shouldFrame && !orientation.matches) {
+        window.location.replace(framePathRef.current || currentPath());
+        return;
+      }
+      if (shouldFrame && !activeRef.current) {
+        framePathRef.current = currentPath();
+        setFrameSrc(framePathRef.current);
+      }
+      activeRef.current = shouldFrame;
+      setActive(shouldFrame);
     };
 
     update();
@@ -57,6 +147,39 @@ export default function IpadLandscapeShell({ children }: { children: ReactNode }
       window.removeEventListener("resize", update);
     };
   }, [pathname]);
+
+  useEffect(() => {
+    if (!active) {
+      pinchRef.current = null;
+      return;
+    }
+    const onMessage = (event: MessageEvent<FrameMessage>) => {
+      if (event.origin !== window.location.origin || event.source !== frameRef.current?.contentWindow) return;
+      const message = event.data;
+      if (message?.type === "aqsa:frame-route") {
+        const path = message.path;
+        if (typeof path !== "string" || !path.startsWith("/") || path.startsWith("//")) return;
+        if (!isPublicApp(path)) {
+          window.location.assign(path);
+          return;
+        }
+        framePathRef.current = path;
+        if (currentPath() !== path) history.replaceState(history.state, "", path);
+      } else if (message?.type === "aqsa:frame-pinch") {
+        if (message.phase === "start" && message.distance > 0) {
+          pinchRef.current = { distance: message.distance, zoom: zoomRef.current };
+        } else if (message.phase === "move" && pinchRef.current && message.distance > 0) {
+          const next = clampZoom(pinchRef.current.zoom * message.distance / pinchRef.current.distance);
+          zoomRef.current = next;
+          setZoom(next);
+        } else if (message.phase === "end") {
+          pinchRef.current = null;
+        }
+      }
+    };
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, [active]);
 
   useEffect(() => {
     if (!active) {
@@ -103,18 +226,20 @@ export default function IpadLandscapeShell({ children }: { children: ReactNode }
     setZoom(next);
   }
 
+  if (!active) return <>{children}</>;
+
   const copy = ZOOM_COPY[language];
   const style = { "--aqsa-phone-zoom": zoom } as CSSProperties;
 
   return (
-    <div className={`aqsa-ipad-stage${active ? " is-active" : ""}`} style={style}>
+    <div className="aqsa-ipad-stage is-active" style={style}>
       <div className="aqsa-ipad-atmosphere" aria-hidden="true" />
       <div className="aqsa-ipad-space">
         <div className="aqsa-iphone" ref={phoneRef}>
           <span className="aqsa-iphone-side aqsa-iphone-side-volume" aria-hidden="true" />
           <span className="aqsa-iphone-side aqsa-iphone-side-power" aria-hidden="true" />
           <div className="aqsa-iphone-screen">
-            {children}
+            <iframe ref={frameRef} title="Aqsa Series" src={frameSrc} allow="autoplay; clipboard-read; clipboard-write; web-share; fullscreen" allowFullScreen />
           </div>
           <span className="aqsa-iphone-island" aria-hidden="true" />
           <span className="aqsa-iphone-home-indicator" aria-hidden="true" />
