@@ -141,6 +141,7 @@ export default function InstallAppCard({ surface }: { surface: "home" | "setting
   if (platform === "unknown") return null;
   if (surface === "home" && (installed || confirmedInstalled || dismissed || platform === "other")) return null;
   if (surface === "welcome" && (installed || confirmedInstalled || platform === "other" || pathname.startsWith("/admin"))) return null;
+  const effectivelyInstalled = installed || confirmedInstalled;
 
   const isIos = platform === "ios-safari" || platform === "ios-chrome" || platform === "ios-other";
   const selectedBrowser = iosGuideBrowser ?? (platform === "ios-chrome" ? "chrome" : platform === "ios-safari" ? "safari" : "other");
@@ -188,11 +189,11 @@ export default function InstallAppCard({ surface }: { surface: "home" | "setting
         <div className="flex items-center gap-3 pe-6">
           <Image src="/icon.png" alt="" width={52} height={52} className="h-13 w-13 shrink-0 rounded-xl" />
           <div className="min-w-0">
-            <h2 className="text-sm font-semibold leading-snug text-white">{installed ? copy.installed : copy.title}</h2>
-            {!installed && <p className="mt-1 text-xs text-white/55">{copy.description}</p>}
+            <h2 className="text-sm font-semibold leading-snug text-white">{effectivelyInstalled ? copy.installed : copy.title}</h2>
+            {!effectivelyInstalled && <p className="mt-1 text-xs text-white/55">{copy.description}</p>}
           </div>
         </div>
-        {!installed && (
+        {!effectivelyInstalled && (
           <button ref={triggerRef} type="button" onClick={handleInstall} className="mt-4 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-[#D4AF37]/30 bg-[#7A1F2B] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#8b2533] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E8D28A]">
             {canPrompt ? <Download size={17} /> : <Share2 size={17} />}
             {canPrompt ? copy.install : copy.guide}

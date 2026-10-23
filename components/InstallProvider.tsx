@@ -17,6 +17,11 @@ type InstallContextValue = {
 };
 
 const InstallContext = createContext<InstallContextValue | null>(null);
+const INSTALLED_KEY = "aqsa-install-confirmed";
+
+function rememberInstallation() {
+  try { localStorage.setItem(INSTALLED_KEY, "true"); } catch { /* Installation still works without storage. */ }
+}
 
 function isInstalled() {
   return window.matchMedia("(display-mode: standalone)").matches ||
@@ -44,6 +49,7 @@ export function InstallProvider({ children }: { children: React.ReactNode }) {
     const timer = window.setTimeout(() => {
       setPlatform(detectPlatform());
       setInstalled(isInstalled());
+      if (isInstalled()) rememberInstallation();
     }, 0);
 
     const onBeforeInstallPrompt = (event: Event) => {
@@ -53,6 +59,7 @@ export function InstallProvider({ children }: { children: React.ReactNode }) {
     const onInstalled = () => {
       setInstalled(true);
       setDeferredPrompt(null);
+      rememberInstallation();
     };
     const onDisplayModeChange = () => setInstalled(isInstalled());
 
