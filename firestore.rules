@@ -11,6 +11,41 @@ service cloud.firestore {
         resource.data.isDeleted == false;
     }
 
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
+    function validProfile() {
+      return request.resource.data.keys().hasAll(['displayName', 'email', 'interests', 'createdAt', 'updatedAt']) &&
+        request.resource.data.keys().hasOnly(['displayName', 'email', 'interests', 'createdAt', 'updatedAt']) &&
+        request.resource.data.displayName is string && request.resource.data.displayName.size() <= 120 &&
+        request.resource.data.email is string && request.resource.data.email == request.auth.token.email &&
+        request.resource.data.interests is list && request.resource.data.interests.size() <= 3 &&
+        request.resource.data.interests.hasOnly(['history', 'tadabbur', 'current_affairs']) &&
+        request.resource.data.createdAt is int && request.resource.data.createdAt > 0 &&
+        request.resource.data.updatedAt is int && request.resource.data.updatedAt >= request.resource.data.createdAt;
+    }
+
+    function validListening(episodeId) {
+      return request.resource.data.keys().hasAll([
+          'seriesId', 'episodeId', 'seriesTitle', 'episodeTitle', 'coverUrl',
+          'positionSeconds', 'durationSeconds', 'completed', 'updatedAt'
+        ]) &&
+        request.resource.data.keys().hasOnly([
+          'seriesId', 'episodeId', 'seriesTitle', 'episodeTitle', 'coverUrl',
+          'positionSeconds', 'durationSeconds', 'completed', 'updatedAt'
+        ]) &&
+        request.resource.data.seriesId is string && request.resource.data.seriesId.size() > 0 && request.resource.data.seriesId.size() <= 120 &&
+        request.resource.data.episodeId == episodeId &&
+        request.resource.data.seriesTitle is string && request.resource.data.seriesTitle.size() <= 200 &&
+        request.resource.data.episodeTitle is string && request.resource.data.episodeTitle.size() <= 200 &&
+        request.resource.data.coverUrl is string && request.resource.data.coverUrl.size() <= 1000 &&
+        request.resource.data.positionSeconds is int && request.resource.data.positionSeconds >= 0 &&
+        request.resource.data.durationSeconds is int && request.resource.data.durationSeconds >= 0 &&
+        request.resource.data.completed is bool &&
+        request.resource.data.updatedAt is int && request.resource.data.updatedAt > 0;
+    }
+
     match /series/{id} {
       allow read: if isAdmin() || isPublishedContent();
       allow write: if isAdmin();
@@ -26,6 +61,22 @@ service cloud.firestore {
     match /videos/{id} {
       allow read: if isAdmin() || isPublishedContent();
       allow write: if isAdmin();
+    }
+
+    match /users/{userId} {
+      allow read: if isAdmin() || isOwner(userId);
+      allow create: if isOwner(userId) && validProfile();
+      allow update: if isOwner(userId) && validProfile() &&
+        request.resource.data.createdAt == resource.data.createdAt;
+      allow delete: if isOwner(userId);
+
+      match /listening/{episodeId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && validListening(episodeId);
+        allow update: if isOwner(userId) && validListening(episodeId) &&
+          request.resource.data.updatedAt >= resource.data.updatedAt;
+        allow delete: if isOwner(userId);
+      }
     }
   }
 }

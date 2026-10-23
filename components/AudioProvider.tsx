@@ -9,6 +9,17 @@ import {
   useRef,
   useState,
 } from "react";
+import { useAuth } from "./AuthProvider";
+import {
+  readListeningProgress,
+  parseListeningProgress,
+  resumePosition,
+  saveListeningProgress,
+  switchListeningOwner,
+} from "../lib/listeningProgress";
+import { connectListeningSync, pushListeningProgress, type ListeningSyncStatus } from "../lib/listeningSync";
+import { trackUsageEvent } from "../lib/usageAnalytics";
+import { canSyncListening } from "../lib/listenerAccount";
 
 export type ActiveEpisode = {
   seriesId: string;
@@ -20,25 +31,19 @@ export type ActiveEpisode = {
   speakerName?: string;
 };
 
-type RecentEpisode = Pick<ActiveEpisode, "seriesId" | "episodeId" | "seriesTitle" | "episodeTitle" | "coverUrl">;
-
-function isRecentEpisode(value: unknown): value is RecentEpisode {
-  return typeof value === "object" && value !== null &&
-    "seriesId" in value && typeof value.seriesId === "string" &&
-    "episodeId" in value && typeof value.episodeId === "string";
-}
-
 type AudioContextType = {
   isPlaying: boolean;
   currentTime: number;
   duration: number;
   activeEpisode: ActiveEpisode | null;
   queue: ActiveEpisode[];
+  syncStatus: ListeningSyncStatus;
   playEpisode: (
     episode: ActiveEpisode,
     queue?: ActiveEpisode[]
   ) => Promise<void>;
   pauseAudio: () => void;
+  resetAudio: () => void;
   toggleCurrent: () => Promise<void>;
   seekAudio: (time: number) => void;
   playNext: () => Promise<void>;
@@ -51,53 +56,104 @@ const AudioContext = createContext<AudioContextType>({
   duration: 0,
   activeEpisode: null,
   queue: [],
+  syncStatus: "idle",
   playEpisode: async () => {},
   pauseAudio: () => {},
+  resetAudio: () => {},
   toggleCurrent: async () => {},
   seekAudio: () => {},
   playNext: async () => {},
   playPrev: async () => {},
 });
 
-function updateContinueListeningStorage(item: ActiveEpisode) {
-  try {
-    const payload = {
-      seriesId: item.seriesId,
-      episodeId: item.episodeId,
-      seriesTitle: item.seriesTitle || "Aqsa Series",
-      episodeTitle: item.episodeTitle || "Tanpa Tajuk",
-      coverUrl: item.coverUrl || "",
-    };
-
-    localStorage.setItem("continueListening", JSON.stringify([payload]));
-
-    const existingRecent = localStorage.getItem("recentlyPlayed");
-    const parsed: unknown = existingRecent ? JSON.parse(existingRecent) : [];
-    const recentList: RecentEpisode[] = Array.isArray(parsed)
-      ? parsed.filter(isRecentEpisode).filter((item) =>
-          item.seriesId !== payload.seriesId || item.episodeId !== payload.episodeId
-        )
-      : [];
-
-    localStorage.setItem(
-      "recentlyPlayed",
-      JSON.stringify([payload, ...recentList].slice(0, 10))
-    );
-  } catch {}
-}
-
 export function AudioProvider({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const { user, loading: authLoading } = useAuth();
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const pendingResumeRef = useRef(0);
+  const lastProgressWriteRef = useRef(0);
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [activeEpisode, setActiveEpisode] = useState<ActiveEpisode | null>(null);
   const [queue, setQueue] = useState<ActiveEpisode[]>([]);
+  const [syncStatus, setSyncStatus] = useState<ListeningSyncStatus>("idle");
+
+  useEffect(() => {
+    if (authLoading) return;
+    const ownerChanged = switchListeningOwner(canSyncListening(user) ? user.uid : null);
+    let resetTimer: number | null = null;
+    if (ownerChanged) {
+      const audio = audioRef.current;
+      if (audio) {
+        audio.pause();
+        audio.removeAttribute("src");
+        audio.load();
+      }
+      resetTimer = window.setTimeout(() => {
+        setActiveEpisode(null);
+        setQueue([]);
+        setCurrentTime(0);
+        setDuration(0);
+        setIsPlaying(false);
+      }, 0);
+      pendingResumeRef.current = 0;
+    }
+    if (!canSyncListening(user)) return () => {
+      if (resetTimer !== null) window.clearTimeout(resetTimer);
+    };
+    let mounted = true;
+    let unsubscribe = () => {};
+    let attempt = 0;
+    const timer = window.setTimeout(() => {
+      if (mounted) setSyncStatus("syncing");
+    }, 0);
+    const reconnect = () => {
+      const currentAttempt = ++attempt;
+      unsubscribe();
+      void connectListeningSync(user.uid, (status) => {
+        if (mounted && currentAttempt === attempt) setSyncStatus(status);
+      }, () => mounted && currentAttempt === attempt).then((stop) => {
+        if (mounted && currentAttempt === attempt) unsubscribe = stop;
+        else stop();
+      });
+    };
+    reconnect();
+    window.addEventListener("online", reconnect);
+    return () => {
+      mounted = false;
+      if (resetTimer !== null) window.clearTimeout(resetTimer);
+      window.clearTimeout(timer);
+      window.removeEventListener("online", reconnect);
+      unsubscribe();
+    };
+  }, [user, authLoading]);
+
+  const persistProgress = useCallback((episode: ActiveEpisode, position: number, length: number, completed = false) => {
+    const progress = parseListeningProgress({
+      seriesId: episode.seriesId,
+      episodeId: episode.episodeId,
+      seriesTitle: episode.seriesTitle || "Aqsa Series",
+      episodeTitle: episode.episodeTitle || "Tanpa Tajuk",
+      coverUrl: episode.coverUrl || "",
+      positionSeconds: completed ? 0 : Math.max(0, Math.floor(position)),
+      durationSeconds: Number.isFinite(length) ? Math.max(0, Math.floor(length)) : 0,
+      completed,
+      updatedAt: Date.now(),
+    });
+    if (!progress) return;
+    saveListeningProgress(progress);
+    if (canSyncListening(user)) {
+      void pushListeningProgress(user.uid, progress)
+        .then(() => setSyncStatus("ready"))
+        .catch(() => setSyncStatus("error"));
+    }
+    lastProgressWriteRef.current = Date.now();
+  }, [user]);
 
   const currentQueueIndex = useMemo(() => {
     if (!activeEpisode) return -1;
@@ -132,13 +188,16 @@ export function AudioProvider({
       activeEpisode?.episodeId === episode.episodeId;
 
     if (!sameTrack || audio.src !== episode.audioUrl) {
+      pendingResumeRef.current = resumePosition(episode.episodeId);
       audio.src = episode.audioUrl;
       setCurrentTime(0);
       setDuration(0);
     }
 
     setActiveEpisode(episode);
-    updateContinueListeningStorage(episode);
+    const currentProgress = readListeningProgress().find((item) => item.episodeId === episode.episodeId);
+    persistProgress(episode, sameTrack ? audio.currentTime : pendingResumeRef.current, currentProgress?.durationSeconds || 0);
+    void trackUsageEvent("aqsa_episode_play", { episode_id: episode.episodeId, series_id: episode.seriesId });
 
     try {
       await audio.play();
@@ -147,11 +206,26 @@ export function AudioProvider({
         console.error("Gagal main audio global:", err);
       }
     }
-  }, [activeEpisode, ensureAudio]);
+  }, [activeEpisode, ensureAudio, persistProgress]);
 
   const pauseAudio = () => {
     const audio = ensureAudio();
     audio.pause();
+  };
+
+  const resetAudio = () => {
+    const audio = audioRef.current;
+    if (audio) {
+      audio.pause();
+      audio.removeAttribute("src");
+      audio.load();
+    }
+    setActiveEpisode(null);
+    setQueue([]);
+    setCurrentTime(0);
+    setDuration(0);
+    setIsPlaying(false);
+    pendingResumeRef.current = 0;
   };
 
   const toggleCurrent = async () => {
@@ -175,6 +249,7 @@ export function AudioProvider({
     const audio = ensureAudio();
     audio.currentTime = time;
     setCurrentTime(time);
+    if (activeEpisode) persistProgress(activeEpisode, time, audio.duration);
   };
 
   const playNext = useCallback(async () => {
@@ -262,19 +337,34 @@ useEffect(() => {
     const audio = ensureAudio();
 
     const handlePlay = () => setIsPlaying(true);
-    const handlePause = () => setIsPlaying(false);
 
     const handleTimeUpdate = () => {
       setCurrentTime(audio.currentTime || 0);
+      if (activeEpisode && Date.now() - lastProgressWriteRef.current >= 15000) {
+        persistProgress(activeEpisode, audio.currentTime, audio.duration);
+      }
     };
 
     const handleLoadedMetadata = () => {
       setDuration(audio.duration || 0);
+      if (pendingResumeRef.current > 0) {
+        audio.currentTime = Math.min(pendingResumeRef.current, Math.max(0, audio.duration - 5));
+        pendingResumeRef.current = 0;
+      }
+    };
+
+    const handleProgressPause = () => {
+      setIsPlaying(false);
+      if (activeEpisode && audio.currentTime > 0) persistProgress(activeEpisode, audio.currentTime, audio.duration);
     };
 
     const handleEnded = async () => {
       setIsPlaying(false);
       setCurrentTime(0);
+      if (activeEpisode) {
+        persistProgress(activeEpisode, 0, audio.duration, true);
+        void trackUsageEvent("aqsa_episode_complete", { episode_id: activeEpisode.episodeId, series_id: activeEpisode.seriesId });
+      }
 
       if (localStorage.getItem("setting-autoPlayNext") === "false") return;
 
@@ -287,19 +377,19 @@ useEffect(() => {
     };
 
     audio.addEventListener("play", handlePlay);
-    audio.addEventListener("pause", handlePause);
+    audio.addEventListener("pause", handleProgressPause);
     audio.addEventListener("timeupdate", handleTimeUpdate);
     audio.addEventListener("loadedmetadata", handleLoadedMetadata);
     audio.addEventListener("ended", handleEnded);
 
     return () => {
       audio.removeEventListener("play", handlePlay);
-      audio.removeEventListener("pause", handlePause);
+      audio.removeEventListener("pause", handleProgressPause);
       audio.removeEventListener("timeupdate", handleTimeUpdate);
       audio.removeEventListener("loadedmetadata", handleLoadedMetadata);
       audio.removeEventListener("ended", handleEnded);
     };
-  }, [currentQueueIndex, queue, activeEpisode, ensureAudio, playEpisode]);
+  }, [currentQueueIndex, queue, activeEpisode, ensureAudio, playEpisode, persistProgress]);
 
   return (
     <AudioContext.Provider
@@ -309,8 +399,10 @@ useEffect(() => {
         duration,
         activeEpisode,
         queue,
+        syncStatus: canSyncListening(user) ? syncStatus : "idle",
         playEpisode,
         pauseAudio,
+        resetAudio,
         toggleCurrent,
         seekAudio,
         playNext,

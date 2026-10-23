@@ -5,6 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { useAudio } from "./AudioProvider";
 import { useLanguage } from "./LanguageProvider";
 import { localizeContent } from "../lib/localizedContent";
+import { LISTENING_CHANGED_EVENT } from "../lib/listeningProgress";
 
 const COPY = {
   ms: { playing: "Sedang Dimainkan", continue: "Sambung Dengar", cover: "Kulit" },
@@ -55,11 +56,13 @@ export default function MiniPlayer() {
     window.addEventListener("storage", syncMiniPlayer);
     window.addEventListener("focus", syncMiniPlayer);
     window.addEventListener("aqsa:settings-changed", syncMiniPlayer);
+    window.addEventListener(LISTENING_CHANGED_EVENT, syncMiniPlayer);
 
     return () => {
       window.removeEventListener("storage", syncMiniPlayer);
       window.removeEventListener("focus", syncMiniPlayer);
       window.removeEventListener("aqsa:settings-changed", syncMiniPlayer);
+      window.removeEventListener(LISTENING_CHANGED_EVENT, syncMiniPlayer);
     };
   }, []);
 

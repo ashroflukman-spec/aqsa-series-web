@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { useLanguage, type AppLanguage } from "../../components/LanguageProvider";
 import InstallAppCard from "../../components/InstallAppCard";
+import AccountPanel from "../../components/AccountPanel";
+import { hasAnalyticsConsent, setAnalyticsConsent, trackUsageEvent } from "../../lib/usageAnalytics";
 
 const COPY = {
   ms: {
@@ -16,8 +18,10 @@ const COPY = {
     miniPlayerHelp: "Paparkan pemain mini di bahagian bawah skrin",
     compact: "Mod ringkas",
     compactHelp: "Gunakan paparan yang lebih ringkas",
+    analytics: "Bantu tambah baik Aqsa Series",
+    analyticsHelp: "Kongsi statistik penggunaan agregat seperti halaman dan episod dimainkan. Pilihan ini boleh diubah bila-bila masa.",
     about: "Tentang Aqsa Series",
-    aboutText: "Aqsa Series ialah platform audio untuk siri ilmu, tadabbur, sejarah, dan pembangunan ummah. Tetapan di halaman ini disimpan pada peranti anda.",
+    aboutText: "Aqsa Series ialah platform audio untuk siri ilmu, tadabbur, sejarah, dan pembangunan ummah. Tetapan disimpan pada peranti; aktiviti mendengar boleh disegerakkan apabila anda log masuk.",
   },
   en: {
     title: "Settings",
@@ -30,8 +34,10 @@ const COPY = {
     miniPlayerHelp: "Show the mini player at the bottom of the screen",
     compact: "Compact mode",
     compactHelp: "Use a more compact layout",
+    analytics: "Help improve Aqsa Series",
+    analyticsHelp: "Share aggregate usage statistics such as pages and episodes played. You can change this choice at any time.",
     about: "About Aqsa Series",
-    aboutText: "Aqsa Series is an audio platform for learning, reflection, history, and community development. Your preferences are saved on this device.",
+    aboutText: "Aqsa Series is an audio platform for learning, reflection, history, and community development. Preferences stay on this device; listening activity can sync when you sign in.",
   },
   ar: {
     title: "الإعدادات",
@@ -44,8 +50,10 @@ const COPY = {
     miniPlayerHelp: "إظهار المشغل المصغر أسفل الشاشة",
     compact: "الوضع المختصر",
     compactHelp: "استخدام عرض أكثر اختصارًا",
+    analytics: "ساعد في تحسين سلسلة الأقصى",
+    analyticsHelp: "شارك إحصاءات استخدام مجمعة مثل الصفحات والحلقات التي تم تشغيلها. يمكنك تغيير هذا الخيار في أي وقت.",
     about: "حول سلسلة الأقصى",
-    aboutText: "سلسلة الأقصى منصة صوتية للمعرفة والتدبر والتاريخ وبناء الأمة. تُحفظ تفضيلاتك على هذا الجهاز.",
+    aboutText: "سلسلة الأقصى منصة صوتية للمعرفة والتدبر والتاريخ وبناء الأمة. تُحفظ التفضيلات على هذا الجهاز ويمكن مزامنة نشاط الاستماع عند تسجيل الدخول.",
   },
 } as const;
 
@@ -61,6 +69,7 @@ export default function SettingsPage() {
   const [autoPlayNext, setAutoPlayNext] = useState(true);
   const [showMiniPlayer, setShowMiniPlayer] = useState(true);
   const [compactMode, setCompactMode] = useState(false);
+  const [analyticsEnabled, setAnalyticsEnabled] = useState(false);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -71,6 +80,7 @@ export default function SettingsPage() {
       if (savedAutoPlay !== null) setAutoPlayNext(savedAutoPlay === "true");
       if (savedMiniPlayer !== null) setShowMiniPlayer(savedMiniPlayer === "true");
       if (savedCompactMode !== null) setCompactMode(savedCompactMode === "true");
+      setAnalyticsEnabled(hasAnalyticsConsent());
     }, 0);
     return () => window.clearTimeout(timer);
   }, []);
@@ -94,6 +104,13 @@ export default function SettingsPage() {
     setCompactMode(updated);
     localStorage.setItem("setting-compactMode", String(updated));
     window.dispatchEvent(new Event("aqsa:settings-changed"));
+  }
+
+  function toggleAnalytics() {
+    const updated = !analyticsEnabled;
+    setAnalyticsEnabled(updated);
+    setAnalyticsConsent(updated);
+    if (updated) void trackUsageEvent("aqsa_analytics_opt_in");
   }
 
   return (
@@ -132,6 +149,8 @@ export default function SettingsPage() {
               ))}
             </div>
           </div>
+
+          <AccountPanel />
 
           <div className="rounded-2xl bg-[#1f232b] p-5 border border-white/5">
             <div className="flex items-center justify-between gap-4">
@@ -213,6 +232,19 @@ export default function SettingsPage() {
                     compactMode ? "left-7" : "left-1"
                   }`}
                 />
+              </button>
+            </div>
+          </div>
+
+          <div className="rounded-2xl bg-[#1f232b] p-5 border border-white/5">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-sm font-semibold">{copy.analytics}</p>
+                <p className="text-xs text-gray-400 mt-1">{copy.analyticsHelp}</p>
+              </div>
+              <button type="button" onClick={toggleAnalytics} aria-label={copy.analytics} aria-pressed={analyticsEnabled}
+                className={`relative h-8 w-14 shrink-0 rounded-full transition ${analyticsEnabled ? "bg-[#7A1F2B]" : "bg-gray-600"}`}>
+                <span className={`absolute top-1 h-6 w-6 rounded-full bg-white transition ${analyticsEnabled ? "left-7" : "left-1"}`} />
               </button>
             </div>
           </div>

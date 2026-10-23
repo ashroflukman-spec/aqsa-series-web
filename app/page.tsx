@@ -14,6 +14,8 @@ import { localizeContent, type TranslatableContent } from "../lib/localizedConte
 import { videoCategoryLabel } from "../lib/videoCategory";
 import InstallAppCard from "../components/InstallAppCard";
 import ContentFeedback from "../components/ContentFeedback";
+import { isAdminEmail } from "../lib/admin";
+import { LISTENING_CHANGED_EVENT, readListeningProgress } from "../lib/listeningProgress";
 
 const COPY = {
   ms: { tagline: "Siri Pengetahuan Baitulmaqdis Kita Bermula Di Sini", search: "Cari siri...", admin: "Panel Admin", nowPlaying: "Sedang Dimainkan", item: "item", resume: "Sambung", videoHighlight: "Video Pilihan", seeAll: "Lihat Semua", fullLibrary: "Pustaka Penuh", seeAllVideos: "Lihat Semua Video", videosHint: "Teruskan ke Pustaka Video Aqsa Series", swipeOrTap: "Leret atau tekan", results: "Hasil Carian", popular: "Siri Audio Popular", series: "siri", loading: "Sedang memuatkan kandungan...", noSeries: "Belum ada siri untuk dipaparkan.", noResults: "Tiada siri sepadan dengan carian.", clearSearch: "Kosongkan carian", failed: "Kandungan belum dapat dimuatkan", failedDetail: "Sila cuba lagi sebentar lagi.", offlineDetail: "Peranti anda tidak bersambung ke internet. Semak sambungan dan cuba lagi.", retry: "Cuba lagi", videoSlide: "Pergi ke video pilihan", speaker: "Penyampai", unknownSpeaker: "Penyampai tidak diketahui", unspecified: "Tidak dinyatakan" },
@@ -255,17 +257,13 @@ export default function Page() {
 
     fetchData();
 
-    const recentTimer = window.setTimeout(() => {
-      const saved = localStorage.getItem("recentlyPlayed");
-      if (!saved) return;
-      try {
-        const parsed = JSON.parse(saved);
-        setRecentlyPlayed(Array.isArray(parsed) && parsed.length > 0 ? [parsed[0]] : []);
-      } catch {
-        setRecentlyPlayed([]);
-      }
-    }, 0);
-    return () => window.clearTimeout(recentTimer);
+    const loadRecent = () => setRecentlyPlayed(readListeningProgress().slice(0, 1));
+    const recentTimer = window.setTimeout(loadRecent, 0);
+    window.addEventListener(LISTENING_CHANGED_EVENT, loadRecent);
+    return () => {
+      window.clearTimeout(recentTimer);
+      window.removeEventListener(LISTENING_CHANGED_EVENT, loadRecent);
+    };
   }, [retryCount]);
 
   const normalized = search.trim().toLowerCase();
@@ -477,7 +475,7 @@ export default function Page() {
                 {copy.tagline}
               </p>
 
-              {user && (
+              {isAdminEmail(user?.email) && (
                 <button
                   onClick={() => router.push("/admin")}
                   className="mt-4 rounded-full border border-white/10 bg-[#1f232b] px-4 py-2 text-[11px] font-medium text-white/85 transition hover:bg-[#2a2f39]"

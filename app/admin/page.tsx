@@ -19,6 +19,7 @@ import { collection, getDocs } from "firebase/firestore";
 import { auth, db } from "../../lib/firebase";
 import AdminGuard from "../../components/AdminGuard";
 import VideoLinkMonitor from "../../components/admin/VideoLinkMonitor";
+import UserInsights from "../../components/admin/UserInsights";
 
 type Stats = {
   speakers: number;
@@ -298,6 +299,8 @@ export default function AdminPage() {
               </div>
             )}
           </div>
+
+          <UserInsights />
 
           <div className="space-y-4">
             {cards.map((card) => {

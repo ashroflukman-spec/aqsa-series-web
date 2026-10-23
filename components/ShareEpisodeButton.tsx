@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { Copy, Facebook, Send, Share2, X } from "lucide-react";
 import { useLanguage } from "./LanguageProvider";
 import { getAppOverlayRoot } from "./appOverlayRoot";
+import { trackUsageEvent } from "../lib/usageAnalytics";
 
 const COPY = {
   ms: { tagline: "Siri Pengetahuan Baitulmaqdis kita bermula di sini.", listen: "Dengar di Aqsa Series:", share: "Kongsi Episod", copy: "Salin", copied: "Disalin", more: "Lainnya", hint: "Pautan ini akan membawa pengguna terus ke halaman episod audio di Aqsa Series.", linkLabel: "Pautan episod", copyFailed: "Salinan automatik gagal. Sila salin pautan di bawah.", shareFailed: "Menu kongsi tidak dapat dibuka. Gunakan Salin atau pilihan aplikasi di atas.", copiedForMore: "Mesej disalin. Tampal dalam aplikasi pilihan anda." },
@@ -53,6 +54,7 @@ export default function ShareEpisodeButton({
     try {
       if (!navigator.clipboard?.writeText) throw new Error("Clipboard unavailable");
       await navigator.clipboard.writeText(shareText);
+      void trackUsageEvent("aqsa_share_copy");
       setCopied(true);
       setTimeout(() => setCopied(false), 1800);
       return true;
@@ -70,6 +72,7 @@ export default function ShareEpisodeButton({
           text: shortDescription || title,
           url: shareUrl,
         });
+        void trackUsageEvent("aqsa_share_native");
         setOpen(false);
         return;
       }
@@ -86,7 +89,7 @@ export default function ShareEpisodeButton({
       <div className="flex justify-center">
         <button
           type="button"
-          onClick={() => { setFeedback(""); setOpen(true); }}
+          onClick={() => { setFeedback(""); setOpen(true); void trackUsageEvent("aqsa_share_open"); }}
           aria-label={copy.share}
           className="flex h-14 w-14 items-center justify-center rounded-full border border-[#7A1F2B]/70 bg-[#7A1F2B]/20 text-white shadow-[0_0_24px_rgba(122,31,43,0.35)] transition duration-300 hover:scale-105 hover:bg-[#7A1F2B]/35 active:scale-95"
         >

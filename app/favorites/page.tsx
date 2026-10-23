@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useLanguage } from "../../components/LanguageProvider";
 import { localizeContent } from "../../lib/localizedContent";
 import ContentFeedback from "../../components/ContentFeedback";
+import { LISTENING_CHANGED_EVENT, readListeningProgress } from "../../lib/listeningProgress";
 
 const COPY = {
   ms: { title: "Aktiviti Anda", subtitle: "Aktiviti mendengar anda", continue: "Sambung Dengar", loading: "Sedang memuatkan aktiviti...", empty: "Tiada aktiviti pendengaran lagi.", emptyDetail: "Mula dengar episod dalam pustaka untuk melihatnya di sini.", explore: "Teroka pustaka" },
@@ -28,27 +29,16 @@ export default function FavoritesPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => {
-      const saved = localStorage.getItem("continueListening");
-
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-
-          if (Array.isArray(parsed)) {
-            setContinueListening(parsed);
-          } else {
-            setContinueListening([]);
-          }
-        } catch {
-          setContinueListening([]);
-        }
-      } else {
-        setContinueListening([]);
-      }
+    const loadRecent = () => {
+      setContinueListening(readListeningProgress().slice(0, 10));
       setLoading(false);
-    }, 0);
-    return () => window.clearTimeout(timer);
+    };
+    const timer = window.setTimeout(loadRecent, 0);
+    window.addEventListener(LISTENING_CHANGED_EVENT, loadRecent);
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener(LISTENING_CHANGED_EVENT, loadRecent);
+    };
   }, []);
 
   return (
