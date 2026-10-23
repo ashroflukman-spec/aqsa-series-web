@@ -20,7 +20,14 @@ import {
 import { connectListeningSync, pushListeningProgress, type ListeningSyncStatus } from "../lib/listeningSync";
 import { trackUsageEvent } from "../lib/usageAnalytics";
 import { canSyncListening } from "../lib/listenerAccount";
-import { episodePosition, shouldOfferEpisodeSignIn } from "../lib/episodeAccess";
+import {
+  advanceEpisodeOffer,
+  emptyEpisodeOfferProgress,
+  EPISODE_SIGN_IN_PROGRESS_KEY,
+  episodePosition,
+  parseEpisodeOfferProgress,
+  type EpisodeOfferProgress,
+} from "../lib/episodeAccess";
 
 export type ActiveEpisode = {
   seriesId: string;
@@ -90,8 +97,24 @@ export function AudioProvider({
   const [queue, setQueue] = useState<ActiveEpisode[]>([]);
   const [syncStatus, setSyncStatus] = useState<ListeningSyncStatus>("idle");
   const [signInOffer, setSignInOffer] = useState<AudioContextType["signInOffer"]>(null);
-  const offerShownRef = useRef(false);
-  const dismissSignInOffer = useCallback(() => setSignInOffer(null), []);
+  const offerProgressRef = useRef<EpisodeOfferProgress>(emptyEpisodeOfferProgress());
+  const readOfferProgress = useCallback(() => {
+    try {
+      const stored = window.localStorage.getItem(EPISODE_SIGN_IN_PROGRESS_KEY);
+      if (stored) return parseEpisodeOfferProgress(JSON.parse(stored));
+    } catch { /* Some private browsers disable local storage. */ }
+    return offerProgressRef.current;
+  }, []);
+  const saveOfferProgress = useCallback((progress: EpisodeOfferProgress) => {
+    offerProgressRef.current = progress;
+    try {
+      window.localStorage.setItem(EPISODE_SIGN_IN_PROGRESS_KEY, JSON.stringify(progress));
+    } catch { /* Keep the count in memory if storage is unavailable. */ }
+  }, []);
+  const dismissSignInOffer = useCallback(() => {
+    setSignInOffer(null);
+    saveOfferProgress(emptyEpisodeOfferProgress());
+  }, [saveOfferProgress]);
   const openMarkerSignInOffer = useCallback((episode: ActiveEpisode, sourceQueue: ActiveEpisode[]) => {
     if (canSyncListening(user)) return;
     setSignInOffer({ episode, position: episodePosition(sourceQueue, episode), source: "marker" });
@@ -100,6 +123,7 @@ export function AudioProvider({
 
   useEffect(() => {
     if (authLoading) return;
+    if (canSyncListening(user)) saveOfferProgress(emptyEpisodeOfferProgress());
     const ownerChanged = switchListeningOwner(canSyncListening(user) ? user.uid : null);
     let resetTimer: number | null = null;
     if (ownerChanged) {
@@ -146,7 +170,7 @@ export function AudioProvider({
       window.removeEventListener("online", reconnect);
       unsubscribe();
     };
-  }, [user, authLoading]);
+  }, [user, authLoading, saveOfferProgress]);
 
   const persistProgress = useCallback((episode: ActiveEpisode, position: number, length: number, completed = false) => {
     const progress = parseListeningProgress({
@@ -214,14 +238,10 @@ export function AudioProvider({
 
     try {
       await audio.play();
-      if (!authLoading && shouldOfferEpisodeSignIn(nextQueue, episode, canSyncListening(user)) && !offerShownRef.current) {
-        offerShownRef.current = true;
-        let alreadyShown = false;
-        try {
-          alreadyShown = window.sessionStorage.getItem("aqsa_episode_sign_in_offer_shown") === "true";
-          window.sessionStorage.setItem("aqsa_episode_sign_in_offer_shown", "true");
-        } catch { /* A private browser may disable session storage. */ }
-        if (!alreadyShown) {
+      if (!authLoading && !canSyncListening(user) && !signInOffer) {
+        const next = advanceEpisodeOffer(readOfferProgress(), episode, false);
+        saveOfferProgress(next.progress);
+        if (next.shouldOffer) {
           setSignInOffer({ episode, position: episodePosition(nextQueue, episode), source: "episode" });
           void trackUsageEvent("aqsa_episode_sign_in_offered", { episode_id: episode.episodeId, series_id: episode.seriesId });
         }
@@ -233,7 +253,7 @@ export function AudioProvider({
       }
       return false;
     }
-  }, [activeEpisode, authLoading, ensureAudio, persistProgress, user]);
+  }, [activeEpisode, authLoading, ensureAudio, persistProgress, readOfferProgress, saveOfferProgress, signInOffer, user]);
 
   const pauseAudio = () => {
     const audio = ensureAudio();

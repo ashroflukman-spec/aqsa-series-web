@@ -1,23 +1,56 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { episodePosition, shouldOfferEpisodeSignIn } from "../lib/episodeAccess.ts";
+import {
+  advanceEpisodeOffer,
+  emptyEpisodeOfferProgress,
+  episodePosition,
+  parseEpisodeOfferProgress,
+} from "../lib/episodeAccess.ts";
 
-const queue = Array.from({ length: 5 }, (_, index) => ({ seriesId: "series-a", episodeId: `episode-${index + 1}` }));
+const episode = (seriesId, episodeId) => ({ seriesId, episodeId });
 
-test("the first three episodes do not trigger the sign-in offer", () => {
-  for (const episode of queue.slice(0, 3)) {
-    assert.equal(shouldOfferEpisodeSignIn(queue, episode, false), false);
+test("the offer appears after three distinct episodes, including across series", () => {
+  let progress = emptyEpisodeOfferProgress();
+  for (const item of [episode("series-a", "1"), episode("series-a", "2")]) {
+    const result = advanceEpisodeOffer(progress, item, false);
+    assert.equal(result.shouldOffer, false);
+    progress = result.progress;
   }
+
+  const third = advanceEpisodeOffer(progress, episode("series-b", "1"), false);
+  assert.equal(third.shouldOffer, true);
+  assert.deepEqual(third.progress, emptyEpisodeOfferProgress());
 });
 
-test("playing episode four or later offers guest sign-in without restricting playback", () => {
-  assert.equal(episodePosition(queue, queue[3]), 4);
-  assert.equal(shouldOfferEpisodeSignIn(queue, queue[3], false), true);
-  assert.equal(shouldOfferEpisodeSignIn(queue, queue[4], false), true);
-  assert.equal(shouldOfferEpisodeSignIn(queue, queue[3], true), false);
+test("replaying the same episode does not increase the count", () => {
+  const first = advanceEpisodeOffer(emptyEpisodeOfferProgress(), episode("series-a", "1"), false);
+  const replay = advanceEpisodeOffer(first.progress, episode("series-a", "1"), false);
+  assert.equal(replay.shouldOffer, false);
+  assert.deepEqual(replay.progress, first.progress);
+  const second = advanceEpisodeOffer(replay.progress, episode("series-a", "2"), false);
+  assert.equal(second.shouldOffer, false);
 });
 
-test("an episode from another series cannot inherit the sign-in offer position", () => {
-  assert.equal(episodePosition(queue, { seriesId: "series-b", episodeId: "episode-4" }), 0);
-  assert.equal(shouldOfferEpisodeSignIn(queue, { seriesId: "series-b", episodeId: "episode-4" }, false), false);
+test("closing the offer starts another three-episode cycle", () => {
+  let progress = emptyEpisodeOfferProgress();
+  for (const id of ["1", "2", "3"]) progress = advanceEpisodeOffer(progress, episode("series-a", id), false).progress;
+  for (const id of ["4", "5"]) {
+    const result = advanceEpisodeOffer(progress, episode("series-a", id), false);
+    assert.equal(result.shouldOffer, false);
+    progress = result.progress;
+  }
+  assert.equal(advanceEpisodeOffer(progress, episode("series-a", "6"), false).shouldOffer, true);
+});
+
+test("signed-in listeners never receive the offer", () => {
+  const progress = advanceEpisodeOffer(emptyEpisodeOfferProgress(), episode("series-a", "1"), false).progress;
+  assert.deepEqual(advanceEpisodeOffer(progress, episode("series-a", "2"), true), {
+    progress: emptyEpisodeOfferProgress(), shouldOffer: false,
+  });
+});
+
+test("stored progress is validated before reuse", () => {
+  assert.deepEqual(parseEpisodeOfferProgress({ playedEpisodeKeys: ["a", "a", 4, "b"] }), { playedEpisodeKeys: ["a", "b"] });
+  assert.deepEqual(parseEpisodeOfferProgress("invalid"), emptyEpisodeOfferProgress());
+  assert.equal(episodePosition([episode("series-a", "1")], episode("series-b", "1")), 0);
 });
