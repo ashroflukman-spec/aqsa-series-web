@@ -20,6 +20,7 @@ import {
 import { connectListeningSync, pushListeningProgress, type ListeningSyncStatus } from "../lib/listeningSync";
 import { trackUsageEvent } from "../lib/usageAnalytics";
 import { canSyncListening } from "../lib/listenerAccount";
+import { addListeningSeconds, markResumedEpisode, recordListeningDelta, SIGN_IN_AUDIO_REST_EVENT } from "../lib/signInInvite";
 
 export type ActiveEpisode = {
   seriesId: string;
@@ -75,6 +76,7 @@ export function AudioProvider({
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const pendingResumeRef = useRef(0);
   const lastProgressWriteRef = useRef(0);
+  const lastListeningTimeRef = useRef(0);
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -189,6 +191,7 @@ export function AudioProvider({
 
     if (!sameTrack || audio.src !== episode.audioUrl) {
       pendingResumeRef.current = resumePosition(episode.episodeId);
+      if (pendingResumeRef.current > 0) markResumedEpisode();
       audio.src = episode.audioUrl;
       setCurrentTime(0);
       setDuration(0);
@@ -248,6 +251,7 @@ export function AudioProvider({
   const seekAudio = (time: number) => {
     const audio = ensureAudio();
     audio.currentTime = time;
+    lastListeningTimeRef.current = time;
     setCurrentTime(time);
     if (activeEpisode) persistProgress(activeEpisode, time, audio.duration);
   };
@@ -336,9 +340,16 @@ useEffect(() => {
   useEffect(() => {
     const audio = ensureAudio();
 
-    const handlePlay = () => setIsPlaying(true);
+    const handlePlay = () => {
+      lastListeningTimeRef.current = audio.currentTime || 0;
+      setIsPlaying(true);
+    };
 
     const handleTimeUpdate = () => {
+      if (!audio.paused) {
+        addListeningSeconds(recordListeningDelta(lastListeningTimeRef.current, audio.currentTime, audio.seeking));
+      }
+      lastListeningTimeRef.current = audio.currentTime || 0;
       setCurrentTime(audio.currentTime || 0);
       if (activeEpisode && Date.now() - lastProgressWriteRef.current >= 15000) {
         persistProgress(activeEpisode, audio.currentTime, audio.duration);
@@ -354,13 +365,17 @@ useEffect(() => {
     };
 
     const handleProgressPause = () => {
+      lastListeningTimeRef.current = audio.currentTime || 0;
       setIsPlaying(false);
       if (activeEpisode && audio.currentTime > 0) persistProgress(activeEpisode, audio.currentTime, audio.duration);
+      if (activeEpisode && audio.currentTime > 0) window.dispatchEvent(new Event(SIGN_IN_AUDIO_REST_EVENT));
     };
 
     const handleEnded = async () => {
+      lastListeningTimeRef.current = 0;
       setIsPlaying(false);
       setCurrentTime(0);
+      window.dispatchEvent(new Event(SIGN_IN_AUDIO_REST_EVENT));
       if (activeEpisode) {
         persistProgress(activeEpisode, 0, audio.duration, true);
         void trackUsageEvent("aqsa_episode_complete", { episode_id: activeEpisode.episodeId, series_id: activeEpisode.seriesId });

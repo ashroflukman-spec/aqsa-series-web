@@ -2,13 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { GoogleAuthProvider, signInWithPopup, signOut } from "firebase/auth";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { doc, setDoc } from "firebase/firestore";
 import { auth, db } from "../lib/firebase";
 import { useAuth } from "./AuthProvider";
 import { useAudio } from "./AudioProvider";
 import { useLanguage } from "./LanguageProvider";
 import { isAdminEmail } from "../lib/admin";
-import { canSyncListening } from "../lib/listenerAccount";
+import { canSyncListening, ensureListenerProfile } from "../lib/listenerAccount";
 import { trackUsageEvent } from "../lib/usageAnalytics";
 
 type Interest = "history" | "tadabbur" | "current_affairs";
@@ -88,28 +88,14 @@ export default function AccountPanel() {
   useEffect(() => {
     if (!canSyncListening(user)) return;
     let active = true;
-    const profileRef = doc(db, "users", user.uid);
     void (async () => {
       try {
-        const snapshot = await getDoc(profileRef);
+        const data = await ensureListenerProfile(user);
         if (!active) return;
-        if (snapshot.exists()) {
-          const data = snapshot.data();
-          setProfileState({ uid: user.uid, profile: {
-            interests: Array.isArray(data.interests) ? data.interests.filter(isInterest) : [],
-            createdAt: typeof data.createdAt === "number" ? data.createdAt : currentTimeMs(),
-          } });
-        } else {
-          const createdAt = currentTimeMs();
-          await setDoc(profileRef, {
-            displayName: user.displayName?.slice(0, 120) || "",
-            email: user.email || "",
-            interests: [],
-            createdAt,
-            updatedAt: createdAt,
-          });
-          if (active) setProfileState({ uid: user.uid, profile: { interests: [], createdAt } });
-        }
+        setProfileState({ uid: user.uid, profile: {
+          interests: data.interests.filter(isInterest),
+          createdAt: data.createdAt,
+        } });
       } catch {
         if (active) setError(copy.saveFailed);
       }

@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { onAuthStateChanged, User } from "firebase/auth";
 import { auth } from "../lib/firebase";
+import { canSyncListening, ensureListenerProfile } from "../lib/listenerAccount";
 
 type AuthContextType = {
   user: User | null;
@@ -26,6 +27,9 @@ export function AuthProvider({
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       setUser(firebaseUser);
       setLoading(false);
+      if (canSyncListening(firebaseUser)) void ensureListenerProfile(firebaseUser).catch(() => {
+        // Listening remains available while offline; the next sign-in retries.
+      });
     });
 
     return () => unsubscribe();
