@@ -1,4 +1,4 @@
-export const FREE_EPISODE_COUNT = 3;
+export const SIGN_IN_OFFER_EPISODE = 4;
 
 type EpisodeIdentity = { seriesId: string; episodeId: string };
 
@@ -9,7 +9,7 @@ export function episodePosition(queue: EpisodeIdentity[], episode: EpisodeIdenti
   return index < 0 ? 0 : index + 1;
 }
 
-export function needsEpisodeSignIn(queue: EpisodeIdentity[], episode: EpisodeIdentity, signedIn: boolean): boolean {
+export function shouldOfferEpisodeSignIn(queue: EpisodeIdentity[], episode: EpisodeIdentity, signedIn: boolean): boolean {
   const position = episodePosition(queue, episode);
-  return !signedIn && (position === 0 || position > FREE_EPISODE_COUNT);
+  return !signedIn && position >= SIGN_IN_OFFER_EPISODE;
 }

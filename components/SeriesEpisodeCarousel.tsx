@@ -1,18 +1,15 @@
 "use client";
 
 import Image from "next/image";
-import { LockKeyhole, Play } from "lucide-react";
+import { Play } from "lucide-react";
 import { useRef, useState } from "react";
 import { useLanguage } from "./LanguageProvider";
-import { useAuth } from "./AuthProvider";
-import { canSyncListening } from "../lib/listenerAccount";
-import { FREE_EPISODE_COUNT } from "../lib/episodeAccess";
 import { localizeContent, type TranslatableContent } from "../lib/localizedContent";
 
 const COPY = {
-  ms: { series: "Siri audio", episode: "Episod", swipe: "Leret untuk lihat", viewSeries: "Lihat siri", listen: "Dengar episod", locked: "Log masuk untuk dengar", seriesCard: "Kad siri", of: "daripada", previous: "Kad sebelumnya bagi", next: "Kad seterusnya bagi", openSeries: "Buka siri", openEpisode: "Buka episod", carousel: "Kad siri dan episod" },
-  en: { series: "Audio series", episode: "Episode", swipe: "Swipe to explore", viewSeries: "View series", listen: "Listen to episode", locked: "Sign in to listen", seriesCard: "Series card", of: "of", previous: "Previous card for", next: "Next card for", openSeries: "Open series", openEpisode: "Open episode", carousel: "Series and episode cards" },
-  ar: { series: "سلسلة صوتية", episode: "الحلقة", swipe: "اسحب لاستكشاف الحلقات", viewSeries: "عرض السلسلة", listen: "استمع إلى الحلقة", locked: "سجّل الدخول للاستماع", seriesCard: "بطاقة السلسلة", of: "من", previous: "البطاقة السابقة في", next: "البطاقة التالية في", openSeries: "افتح السلسلة", openEpisode: "افتح الحلقة", carousel: "بطاقات السلسلة والحلقات" },
+  ms: { series: "Siri audio", episode: "Episod", swipe: "Leret untuk lihat", viewSeries: "Lihat siri", listen: "Dengar episod", seriesCard: "Kad siri", of: "daripada", previous: "Kad sebelumnya bagi", next: "Kad seterusnya bagi", openSeries: "Buka siri", openEpisode: "Buka episod", carousel: "Kad siri dan episod" },
+  en: { series: "Audio series", episode: "Episode", swipe: "Swipe to explore", viewSeries: "View series", listen: "Listen to episode", seriesCard: "Series card", of: "of", previous: "Previous card for", next: "Next card for", openSeries: "Open series", openEpisode: "Open episode", carousel: "Series and episode cards" },
+  ar: { series: "سلسلة صوتية", episode: "الحلقة", swipe: "اسحب لاستكشاف الحلقات", viewSeries: "عرض السلسلة", listen: "استمع إلى الحلقة", seriesCard: "بطاقة السلسلة", of: "من", previous: "البطاقة السابقة في", next: "البطاقة التالية في", openSeries: "افتح السلسلة", openEpisode: "افتح الحلقة", carousel: "بطاقات السلسلة والحلقات" },
 } as const;
 
 export type CarouselEpisode = {
@@ -53,7 +50,6 @@ export default function SeriesEpisodeCarousel({
   onOpenEpisode,
 }: Props) {
   const { language } = useLanguage();
-  const { user, loading: authLoading } = useAuth();
   const copy = COPY[language];
   const localizedSeries = localizeContent("series", series, language);
   const scrollerRef = useRef<HTMLDivElement>(null);
@@ -177,7 +173,6 @@ export default function SeriesEpisodeCarousel({
         </button>
 
         {episodes.map((episode, index) => {
-          const locked = !authLoading && !canSyncListening(user) && index >= FREE_EPISODE_COUNT;
           const localizedEpisode = localizeContent("episode", episode, language);
           const coverUrl = episode.imageUrl || episode.coverUrl || series.coverUrl;
           const duration = formatDuration(episode.durationSeconds);
@@ -212,7 +207,7 @@ export default function SeriesEpisodeCarousel({
                   className="absolute bottom-4 end-4 flex h-12 w-12 items-center justify-center rounded-full border border-white/20 bg-red-500 text-white shadow-[0_10px_26px_rgba(239,68,68,0.35)] transition duration-300 group-hover:scale-105 group-active:scale-95"
                 >
                   <span className="absolute inset-[1px] rounded-full bg-gradient-to-br from-white/20 via-transparent to-black/10" />
-                  {locked ? <LockKeyhole size={21} strokeWidth={2} className="relative" /> : <Play size={21} fill="currentColor" strokeWidth={2} className="relative ml-0.5" />}
+                  <Play size={21} fill="currentColor" strokeWidth={2} className="relative ml-0.5" />
                 </span>
               </div>
               <div className="flex min-h-[144px] flex-col p-4">
@@ -223,7 +218,7 @@ export default function SeriesEpisodeCarousel({
                   {localizedSeries.title}
                 </span>
                 <span className="mt-auto flex items-center justify-between pt-4 text-xs font-medium text-[#E8D28A]">
-                  <span>{locked ? copy.locked : copy.listen}</span>
+                  <span>{copy.listen}</span>
                   {duration && <span className="text-white/75">{duration}</span>}
                 </span>
               </div>

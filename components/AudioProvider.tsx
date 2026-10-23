@@ -20,7 +20,7 @@ import {
 import { connectListeningSync, pushListeningProgress, type ListeningSyncStatus } from "../lib/listeningSync";
 import { trackUsageEvent } from "../lib/usageAnalytics";
 import { canSyncListening } from "../lib/listenerAccount";
-import { episodePosition, needsEpisodeSignIn } from "../lib/episodeAccess";
+import { episodePosition, shouldOfferEpisodeSignIn } from "../lib/episodeAccess";
 
 export type ActiveEpisode = {
   seriesId: string;
@@ -39,8 +39,9 @@ type AudioContextType = {
   activeEpisode: ActiveEpisode | null;
   queue: ActiveEpisode[];
   syncStatus: ListeningSyncStatus;
-  signInRequired: { episode: ActiveEpisode; queue: ActiveEpisode[]; position: number } | null;
-  dismissSignInRequired: () => void;
+  signInOffer: { episode: ActiveEpisode; position: number; source: "episode" | "marker" } | null;
+  dismissSignInOffer: () => void;
+  openMarkerSignInOffer: (episode: ActiveEpisode, queue: ActiveEpisode[]) => void;
   playEpisode: (
     episode: ActiveEpisode,
     queue: ActiveEpisode[]
@@ -60,8 +61,9 @@ const AudioContext = createContext<AudioContextType>({
   activeEpisode: null,
   queue: [],
   syncStatus: "idle",
-  signInRequired: null,
-  dismissSignInRequired: () => {},
+  signInOffer: null,
+  dismissSignInOffer: () => {},
+  openMarkerSignInOffer: () => {},
   playEpisode: async () => false,
   pauseAudio: () => {},
   resetAudio: () => {},
@@ -87,8 +89,14 @@ export function AudioProvider({
   const [activeEpisode, setActiveEpisode] = useState<ActiveEpisode | null>(null);
   const [queue, setQueue] = useState<ActiveEpisode[]>([]);
   const [syncStatus, setSyncStatus] = useState<ListeningSyncStatus>("idle");
-  const [signInRequired, setSignInRequired] = useState<AudioContextType["signInRequired"]>(null);
-  const dismissSignInRequired = useCallback(() => setSignInRequired(null), []);
+  const [signInOffer, setSignInOffer] = useState<AudioContextType["signInOffer"]>(null);
+  const offerShownRef = useRef(false);
+  const dismissSignInOffer = useCallback(() => setSignInOffer(null), []);
+  const openMarkerSignInOffer = useCallback((episode: ActiveEpisode, sourceQueue: ActiveEpisode[]) => {
+    if (canSyncListening(user)) return;
+    setSignInOffer({ episode, position: episodePosition(sourceQueue, episode), source: "marker" });
+    void trackUsageEvent("aqsa_marker_sign_in_offered", { episode_id: episode.episodeId, series_id: episode.seriesId });
+  }, [user]);
 
   useEffect(() => {
     if (authLoading) return;
@@ -186,13 +194,6 @@ export function AudioProvider({
   ) => {
     const audio = ensureAudio();
 
-    if (needsEpisodeSignIn(nextQueue, episode, canSyncListening(user))) {
-      audio.pause();
-      setSignInRequired({ episode, queue: nextQueue, position: episodePosition(nextQueue, episode) });
-      void trackUsageEvent("aqsa_episode_sign_in_required", { episode_id: episode.episodeId, series_id: episode.seriesId });
-      return false;
-    }
-
     setQueue(nextQueue);
 
     const sameTrack =
@@ -213,6 +214,18 @@ export function AudioProvider({
 
     try {
       await audio.play();
+      if (!authLoading && shouldOfferEpisodeSignIn(nextQueue, episode, canSyncListening(user)) && !offerShownRef.current) {
+        offerShownRef.current = true;
+        let alreadyShown = false;
+        try {
+          alreadyShown = window.sessionStorage.getItem("aqsa_episode_sign_in_offer_shown") === "true";
+          window.sessionStorage.setItem("aqsa_episode_sign_in_offer_shown", "true");
+        } catch { /* A private browser may disable session storage. */ }
+        if (!alreadyShown) {
+          setSignInOffer({ episode, position: episodePosition(nextQueue, episode), source: "episode" });
+          void trackUsageEvent("aqsa_episode_sign_in_offered", { episode_id: episode.episodeId, series_id: episode.seriesId });
+        }
+      }
       return true;
     } catch (err) {
       if (!(err instanceof Error && err.name === "AbortError")) {
@@ -220,17 +233,7 @@ export function AudioProvider({
       }
       return false;
     }
-  }, [activeEpisode, ensureAudio, persistProgress, user]);
-
-  useEffect(() => {
-    if (!canSyncListening(user) || !signInRequired) return;
-    const timer = window.setTimeout(() => {
-      const { episode, queue: pendingQueue } = signInRequired;
-      setSignInRequired(null);
-      void playEpisode(episode, pendingQueue);
-    }, 100);
-    return () => window.clearTimeout(timer);
-  }, [user, signInRequired, playEpisode]);
+  }, [activeEpisode, authLoading, ensureAudio, persistProgress, user]);
 
   const pauseAudio = () => {
     const audio = ensureAudio();
@@ -424,8 +427,9 @@ useEffect(() => {
         activeEpisode,
         queue,
         syncStatus: canSyncListening(user) ? syncStatus : "idle",
-        signInRequired,
-        dismissSignInRequired,
+        signInOffer,
+        dismissSignInOffer,
+        openMarkerSignInOffer,
         playEpisode,
         pauseAudio,
         resetAudio,

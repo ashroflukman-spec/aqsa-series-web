@@ -11,28 +11,20 @@ import {
   Bookmark,
   SkipBack,
   SkipForward,
-  LockKeyhole,
   Trash2,
 } from "lucide-react";
 import { db } from "../../../../lib/firebase";
 import { publishedContentQuery, publicSpeakersQuery } from "../../../../lib/publicFirestore";
 import { useLanguage } from "../../../../components/LanguageProvider";
-import { localizeContent, type TranslatableContent } from "../../../../lib/localizedContent";
-import ContentFeedback from "../../../../components/ContentFeedback";
 import { useAuth } from "../../../../components/AuthProvider";
 import { canSyncListening } from "../../../../lib/listenerAccount";
-import { FREE_EPISODE_COUNT } from "../../../../lib/episodeAccess";
-
-const LOCKED_COPY = {
-  ms: "Log masuk dengan Google untuk mendengar episod ini.",
-  en: "Sign in with Google to listen to this episode.",
-  ar: "سجّل الدخول باستخدام Google للاستماع إلى هذه الحلقة.",
-} as const;
+import { localizeContent, type TranslatableContent } from "../../../../lib/localizedContent";
+import ContentFeedback from "../../../../components/ContentFeedback";
 
 const COPY = {
-  ms: { missingEpisode: "Episod tidak dijumpai", missingSeries: "Siri tidak dijumpai", loadFailed: "Gagal memuatkan episod", offline: "Peranti anda tidak bersambung ke internet.", retry: "Cuba lagi", loading: "Memuatkan episod...", back: "Kembali ke Senarai Episod", playing: "Sedang Dimainkan", paused: "Dijeda", untitled: "Tanpa Tajuk", speaker: "Penyampai", unknownSpeaker: "Penyampai tidak diketahui", addMarker: "Tambah penanda", markerExists: "Penanda sudah ada sekitar", markerAdded: "Penanda ditambah pada", previous: "Sebelum", next: "Seterusnya", play: "Main", pause: "Jeda", noAudio: "Audio belum dimuat naik.", description: "Huraian Episod", noDescription: "Tiada huraian untuk episod ini.", reviewMarkers: "Penanda Ulang Kaji", markersHelp: "Simpan poin penting untuk ulang kaji kemudian", markersEmpty: "Belum ada penanda. Tekan butang penanda semasa audio sedang berjalan.", deleteMarker: "Padam penanda", marker: "Penanda", note: "Tulis nota atau poin penting di sini...", originalContent: "Huraian dalam bahasa asal", shareDescription: "Dengar episod ini di Aqsa Series." },
-  en: { missingEpisode: "Episode not found", missingSeries: "Series not found", loadFailed: "Unable to load episode", offline: "Your device is offline.", retry: "Try again", loading: "Loading episode...", back: "Back to episodes", playing: "Now Playing", paused: "Paused", untitled: "Untitled", speaker: "Speaker", unknownSpeaker: "Unknown speaker", addMarker: "Add marker", markerExists: "A marker already exists near", markerAdded: "Marker added at", previous: "Previous", next: "Next", play: "Play", pause: "Pause", noAudio: "Audio has not been uploaded.", description: "Episode Description", noDescription: "No description for this episode.", reviewMarkers: "Review Markers", markersHelp: "Save important points to review later", markersEmpty: "No markers yet. Add one while listening.", deleteMarker: "Delete marker", marker: "Marker", note: "Write a note or important point here...", originalContent: "Description shown in its original language", shareDescription: "Listen to this episode on Aqsa Series." },
-  ar: { missingEpisode: "لم يُعثر على الحلقة", missingSeries: "لم يُعثر على السلسلة", loadFailed: "تعذّر تحميل الحلقة", offline: "جهازك غير متصل بالإنترنت.", retry: "إعادة المحاولة", loading: "جارٍ تحميل الحلقة...", back: "العودة إلى الحلقات", playing: "قيد التشغيل", paused: "متوقف مؤقتًا", untitled: "بلا عنوان", speaker: "المتحدث", unknownSpeaker: "متحدث غير معروف", addMarker: "إضافة علامة", markerExists: "توجد علامة بالقرب من", markerAdded: "أُضيفت علامة عند", previous: "السابق", next: "التالي", play: "تشغيل", pause: "إيقاف مؤقت", noAudio: "لم يُرفع الملف الصوتي بعد.", description: "وصف الحلقة", noDescription: "لا يوجد وصف لهذه الحلقة.", reviewMarkers: "علامات المراجعة", markersHelp: "احفظ النقاط المهمة للرجوع إليها لاحقًا", markersEmpty: "لا توجد علامات بعد. أضف علامة أثناء الاستماع.", deleteMarker: "حذف العلامة", marker: "علامة", note: "اكتب ملاحظة أو نقطة مهمة هنا...", originalContent: "يُعرض الوصف بلغته الأصلية", shareDescription: "استمع إلى هذه الحلقة على Aqsa Series." },
+  ms: { missingEpisode: "Episod tidak dijumpai", missingSeries: "Siri tidak dijumpai", loadFailed: "Gagal memuatkan episod", offline: "Peranti anda tidak bersambung ke internet.", retry: "Cuba lagi", loading: "Memuatkan episod...", back: "Kembali ke Senarai Episod", playing: "Sedang Dimainkan", paused: "Dijeda", untitled: "Tanpa Tajuk", speaker: "Penyampai", unknownSpeaker: "Penyampai tidak diketahui", addMarker: "Tambah penanda", markerOffer: "Aktifkan penanda percuma", markerTeaser: "Log masuk percuma untuk menandakan detik penting dan menulis nota pada setiap episod.", markerCta: "Lihat manfaat Premium Percuma", markerExists: "Penanda sudah ada sekitar", markerAdded: "Penanda ditambah pada", previous: "Sebelum", next: "Seterusnya", play: "Main", pause: "Jeda", noAudio: "Audio belum dimuat naik.", description: "Huraian Episod", noDescription: "Tiada huraian untuk episod ini.", reviewMarkers: "Penanda Ulang Kaji", markersHelp: "Simpan poin penting untuk ulang kaji kemudian", markersEmpty: "Belum ada penanda. Tekan butang penanda semasa audio sedang berjalan.", deleteMarker: "Padam penanda", marker: "Penanda", note: "Tulis nota atau poin penting di sini...", originalContent: "Huraian dalam bahasa asal", shareDescription: "Dengar episod ini di Aqsa Series." },
+  en: { missingEpisode: "Episode not found", missingSeries: "Series not found", loadFailed: "Unable to load episode", offline: "Your device is offline.", retry: "Try again", loading: "Loading episode...", back: "Back to episodes", playing: "Now Playing", paused: "Paused", untitled: "Untitled", speaker: "Speaker", unknownSpeaker: "Unknown speaker", addMarker: "Add marker", markerOffer: "Activate free markers", markerTeaser: "Sign in for free to mark important moments and write notes in every episode.", markerCta: "Explore Free Premium", markerExists: "A marker already exists near", markerAdded: "Marker added at", previous: "Previous", next: "Next", play: "Play", pause: "Pause", noAudio: "Audio has not been uploaded.", description: "Episode Description", noDescription: "No description for this episode.", reviewMarkers: "Review Markers", markersHelp: "Save important points to review later", markersEmpty: "No markers yet. Add one while listening.", deleteMarker: "Delete marker", marker: "Marker", note: "Write a note or important point here...", originalContent: "Description shown in its original language", shareDescription: "Listen to this episode on Aqsa Series." },
+  ar: { missingEpisode: "لم يُعثر على الحلقة", missingSeries: "لم يُعثر على السلسلة", loadFailed: "تعذّر تحميل الحلقة", offline: "جهازك غير متصل بالإنترنت.", retry: "إعادة المحاولة", loading: "جارٍ تحميل الحلقة...", back: "العودة إلى الحلقات", playing: "قيد التشغيل", paused: "متوقف مؤقتًا", untitled: "بلا عنوان", speaker: "المتحدث", unknownSpeaker: "متحدث غير معروف", addMarker: "إضافة علامة", markerOffer: "تفعيل العلامات مجانًا", markerTeaser: "سجّل الدخول مجانًا لوضع علامات على اللحظات المهمة وكتابة ملاحظات في كل حلقة.", markerCta: "اكتشف المزايا الإضافية المجانية", markerExists: "توجد علامة بالقرب من", markerAdded: "أُضيفت علامة عند", previous: "السابق", next: "التالي", play: "تشغيل", pause: "إيقاف مؤقت", noAudio: "لم يُرفع الملف الصوتي بعد.", description: "وصف الحلقة", noDescription: "لا يوجد وصف لهذه الحلقة.", reviewMarkers: "علامات المراجعة", markersHelp: "احفظ النقاط المهمة للرجوع إليها لاحقًا", markersEmpty: "لا توجد علامات بعد. أضف علامة أثناء الاستماع.", deleteMarker: "حذف العلامة", marker: "علامة", note: "اكتب ملاحظة أو نقطة مهمة هنا...", originalContent: "يُعرض الوصف بلغته الأصلية", shareDescription: "استمع إلى هذه الحلقة على Aqsa Series." },
 } as const;
 
 type EpisodeData = {
@@ -109,6 +101,7 @@ export default function PlayerPage() {
     seekAudio,
     playNext,
     playPrev,
+    openMarkerSignInOffer,
   } = useAudio();
 
   const [episode, setEpisode] = useState<EpisodeData | null>(null);
@@ -122,6 +115,7 @@ export default function PlayerPage() {
 
   const [isMarkerFlash, setIsMarkerFlash] = useState(false);
   const [markers, setMarkers] = useState<MarkerItem[]>([]);
+  const [loadedMarkerKey, setLoadedMarkerKey] = useState<string | null>(null);
   const [toast, setToast] = useState("");
 
   const localizedSeries = series ? localizeContent("series", { ...series, id: series.id || "", title: series.title || "" }, language) : null;
@@ -135,14 +129,17 @@ export default function PlayerPage() {
   const pageCurrentTime = isCurrentEpisode ? currentTime : 0;
   const pageDuration = isCurrentEpisode ? duration : episode?.durationSeconds || 0;
 
-  const markerStorageKey = useMemo(
-    () => `aqsa_markers_${seriesId}_${episodeId}`,
-    [seriesId, episodeId]
+  const markerStorageKey = useMemo(() =>
+    canSyncListening(user) ? `aqsa_markers_${user.uid}_${seriesId}_${episodeId}` : null,
+    [user, seriesId, episodeId]
   );
+  const displayedMarkers = loadedMarkerKey === markerStorageKey ? markers : [];
 
   const saveMarkersToStorage = (nextMarkers: MarkerItem[]) => {
+    if (!markerStorageKey) return;
     setMarkers(nextMarkers);
-    localStorage.setItem(markerStorageKey, JSON.stringify(nextMarkers));
+    setLoadedMarkerKey(markerStorageKey);
+    try { localStorage.setItem(markerStorageKey, JSON.stringify(nextMarkers)); } catch { /* Storage may be unavailable. */ }
   };
 
   const getSpeakerName = useCallback((speakerId?: string, fallbackName?: string) => {
@@ -160,6 +157,11 @@ export default function PlayerPage() {
     coverUrl: series?.coverUrl || ep.coverUrl || ep.imageUrl || "",
     speakerName: getSpeakerName(ep.speakerId, ep.speakerName),
   })), [seriesEpisodes, series, seriesId, getSpeakerName]);
+
+  const requestMarkerOffer = () => {
+    const target = episodeQueue.find((item) => item.episodeId === episodeId);
+    if (target && !authLoading) openMarkerSignInOffer(target, episodeQueue);
+  };
 
   const syncEpisodeToProvider = useCallback(async (targetEpisode: EpisodeData) => {
     const target = {
@@ -324,22 +326,30 @@ export default function PlayerPage() {
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      const saved = localStorage.getItem(markerStorageKey);
-
-      if (!saved) {
+      if (!markerStorageKey) {
         setMarkers([]);
+        setLoadedMarkerKey(null);
         return;
       }
-
       try {
-        const parsed = JSON.parse(saved);
+        let saved = localStorage.getItem(markerStorageKey);
+        const legacyKey = `aqsa_markers_${seriesId}_${episodeId}`;
+        if (!saved) {
+          saved = localStorage.getItem(legacyKey);
+          if (saved) {
+            localStorage.setItem(markerStorageKey, saved);
+            localStorage.removeItem(legacyKey);
+          }
+        }
+        const parsed = JSON.parse(saved || "[]");
         setMarkers(Array.isArray(parsed) ? parsed : []);
       } catch {
         setMarkers([]);
       }
+      setLoadedMarkerKey(markerStorageKey);
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [markerStorageKey]);
+  }, [markerStorageKey, seriesId, episodeId]);
 
   useEffect(() => {
     if (loadedRouteKey !== routeKey || !activeEpisode) return;
@@ -367,7 +377,6 @@ export default function PlayerPage() {
   const currentEpisodeIndex = seriesEpisodes.findIndex(
     (ep) => ep.id === episodeId
   );
-  const guestLocked = !authLoading && !canSyncListening(user) && currentEpisodeIndex >= FREE_EPISODE_COUNT;
 
   const prevEpisode =
     currentEpisodeIndex > 0 ? seriesEpisodes[currentEpisodeIndex - 1] : null;
@@ -422,9 +431,13 @@ export default function PlayerPage() {
 
   const addMarker = () => {
     if (!episode?.audioUrl || !isCurrentEpisode) return;
+    if (!markerStorageKey) {
+      requestMarkerOffer();
+      return;
+    }
 
     const time = pageCurrentTime || 0;
-    const isDuplicate = markers.some(
+    const isDuplicate = displayedMarkers.some(
       (marker) => Math.abs(marker.time - time) < 2
     );
 
@@ -439,11 +452,11 @@ export default function PlayerPage() {
           ? crypto.randomUUID()
           : `${Date.now()}-${Math.random().toString(36).slice(2)}`,
       time,
-      label: `${copy.marker} ${markers.length + 1}`,
+      label: `${copy.marker} ${displayedMarkers.length + 1}`,
       note: "",
     };
 
-    const updated = [...markers, newMarker].sort((a, b) => a.time - b.time);
+    const updated = [...displayedMarkers, newMarker].sort((a, b) => a.time - b.time);
     saveMarkersToStorage(updated);
     setToast(`${copy.markerAdded} ${formatTime(time)}`);
     setIsMarkerFlash(true);
@@ -454,12 +467,14 @@ export default function PlayerPage() {
   };
 
   const deleteMarker = (id: string) => {
-    const updated = markers.filter((marker) => marker.id !== id);
+    if (!markerStorageKey) return;
+    const updated = displayedMarkers.filter((marker) => marker.id !== id);
     saveMarkersToStorage(updated);
   };
 
   const updateMarkerNote = (id: string, note: string) => {
-    const updated = markers.map((marker) =>
+    if (!markerStorageKey) return;
+    const updated = displayedMarkers.map((marker) =>
       marker.id === id ? { ...marker, note } : marker
     );
     saveMarkersToStorage(updated);
@@ -590,7 +605,6 @@ const shareUrl =
             </div>
           </div>
 
-          {guestLocked ? <div className="flex items-center gap-2 border-t border-[#D4AF37]/20 bg-[#D4AF37]/[0.07] px-5 py-3 text-xs font-medium text-[#E8D28A]"><LockKeyhole size={15} className="shrink-0" />{LOCKED_COPY[language]}</div> : null}
           <div className="border-t border-white/6 bg-[#2f3238]/95 p-4 backdrop-blur-xl">
             <div className="mb-5 flex items-start justify-between gap-4">
               <div className="min-w-0">
@@ -606,8 +620,8 @@ const shareUrl =
                 <button
                   type="button"
                   onClick={addMarker}
-                  aria-label={copy.addMarker}
-                  disabled={!episode.audioUrl || !isCurrentEpisode}
+                  aria-label={markerStorageKey ? copy.addMarker : copy.markerOffer}
+                  disabled={!episode.audioUrl || !isCurrentEpisode || authLoading}
                   className={`relative flex h-[68px] w-[68px] items-center justify-center rounded-full border border-[#D4AF37]/45 bg-[#D4AF37]/10 shadow-[0_0_22px_rgba(212,175,55,0.18)] backdrop-blur-xl transition duration-300 active:scale-95 disabled:opacity-40 ${
                     isMarkerFlash
                       ? "ring-4 ring-[#D4AF37]/25 shadow-[0_0_34px_rgba(212,175,55,0.28)]"
@@ -654,7 +668,7 @@ const shareUrl =
                 />
 
                 {pageDuration > 0 &&
-                  markers.map((marker) => {
+                  displayedMarkers.map((marker) => {
                     const left = `${(marker.time / pageDuration) * 100}%`;
 
                     return (
@@ -781,17 +795,22 @@ const shareUrl =
             </div>
 
             <span className="rounded-full border border-[#D4AF37]/20 bg-[#D4AF37]/10 px-3 py-1 text-xs font-medium text-[#E8D28A]">
-              {markers.length} {copy.marker.toLowerCase()}
+              {markerStorageKey ? `${displayedMarkers.length} ${copy.marker.toLowerCase()}` : copy.markerOffer}
             </span>
           </div>
 
-          {markers.length === 0 ? (
+          {!markerStorageKey ? (
+            <div className="rounded-[22px] border border-white/10 bg-black/10 px-4 py-4 text-sm text-white/70">
+              <p>{copy.markerTeaser}</p>
+              <button type="button" onClick={requestMarkerOffer} disabled={authLoading} className="mt-3 min-h-11 rounded-xl border border-[#D4AF37]/25 bg-[#D4AF37]/10 px-4 font-semibold text-[#E8D28A] disabled:opacity-50">{copy.markerCta}</button>
+            </div>
+          ) : displayedMarkers.length === 0 ? (
             <div className="rounded-[22px] border border-white/10 bg-black/10 px-4 py-4 text-sm text-white/60">
               {copy.markersEmpty}
             </div>
           ) : (
             <div className="space-y-2.5">
-              {markers.map((marker) => (
+              {displayedMarkers.map((marker) => (
                 <div
                   key={marker.id}
                   className="group rounded-[22px] border border-white/10 bg-black/10 px-4 py-4 transition duration-300 hover:border-white/15 hover:bg-white/[0.04]"

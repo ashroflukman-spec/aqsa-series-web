@@ -6,10 +6,6 @@ import { doc, getDoc, getDocs } from "firebase/firestore";
 import { db } from "../../../lib/firebase";
 import { publishedContentQuery, publicSpeakersQuery } from "../../../lib/publicFirestore";
 import { useAudio } from "../../../components/AudioProvider";
-import { useAuth } from "../../../components/AuthProvider";
-import { canSyncListening } from "../../../lib/listenerAccount";
-import { FREE_EPISODE_COUNT } from "../../../lib/episodeAccess";
-import { LockKeyhole } from "lucide-react";
 import { useLanguage } from "../../../components/LanguageProvider";
 import { localizeContent, type TranslatableContent } from "../../../lib/localizedContent";
 
@@ -73,7 +69,6 @@ export default function SeriesPage() {
   const params = useParams();
   const router = useRouter();
   const { playEpisode } = useAudio();
-  const { user, loading: authLoading } = useAuth();
   const { language } = useLanguage();
   const copy = COPY[language];
 
@@ -418,14 +413,14 @@ async function handleOpenEpisode(ep: EpisodeItem) {
   <div className="absolute inset-[1px] rounded-full bg-gradient-to-br from-white/[0.14] via-white/[0.04] to-transparent" />
   <div className="absolute inset-[1px] rounded-full shadow-[inset_0_1px_0_rgba(255,255,255,0.18),inset_0_-10px_18px_rgba(255,255,255,0.015)]" />
   <div className="absolute left-[9px] top-[7px] h-3.5 w-5 rounded-full bg-white/[0.10] blur-[2px]" />
-  {!authLoading && !canSyncListening(user) && index >= FREE_EPISODE_COUNT ? <LockKeyhole size={16} className="relative z-10 text-[#E8D28A]" /> : <svg
+  <svg
     xmlns="http://www.w3.org/2000/svg"
     viewBox="0 0 24 24"
     fill="rgba(255,255,255,0.88)"
     className="relative z-10 ml-[1px] h-[14px] w-[14px] drop-shadow-[0_0_4px_rgba(255,255,255,0.14)]"
   >
     <path d="M8 5v14l11-7z" />
-  </svg>}
+  </svg>
 </div>
 
                   <div className="flex items-start justify-between gap-4 pe-12">
@@ -436,7 +431,6 @@ async function handleOpenEpisode(ep: EpisodeItem) {
                       <p className="mt-1 text-xs text-gray-400">
   {language === "ms" ? "Episod" : language === "en" ? "Episode" : "الحلقة"} {index + 1} · {formatDuration(ep.durationSeconds || 0)}
 </p>
-                      {!authLoading && !canSyncListening(user) && index >= FREE_EPISODE_COUNT ? <p className="mt-1 text-xs font-medium text-[#E8D28A]">{language === "ms" ? "Log masuk untuk dengar" : language === "en" ? "Sign in to listen" : "سجّل الدخول للاستماع"}</p> : null}
                     </div>
                   </div>
                 </button>
