@@ -20,7 +20,7 @@ import {
 import { connectListeningSync, pushListeningProgress, type ListeningSyncStatus } from "../lib/listeningSync";
 import { trackUsageEvent } from "../lib/usageAnalytics";
 import { canSyncListening } from "../lib/listenerAccount";
-import { addListeningSeconds, markResumedEpisode, recordListeningDelta, SIGN_IN_AUDIO_REST_EVENT } from "../lib/signInInvite";
+import { episodePosition, needsEpisodeSignIn } from "../lib/episodeAccess";
 
 export type ActiveEpisode = {
   seriesId: string;
@@ -39,10 +39,12 @@ type AudioContextType = {
   activeEpisode: ActiveEpisode | null;
   queue: ActiveEpisode[];
   syncStatus: ListeningSyncStatus;
+  signInRequired: { episode: ActiveEpisode; queue: ActiveEpisode[]; position: number } | null;
+  dismissSignInRequired: () => void;
   playEpisode: (
     episode: ActiveEpisode,
-    queue?: ActiveEpisode[]
-  ) => Promise<void>;
+    queue: ActiveEpisode[]
+  ) => Promise<boolean>;
   pauseAudio: () => void;
   resetAudio: () => void;
   toggleCurrent: () => Promise<void>;
@@ -58,7 +60,9 @@ const AudioContext = createContext<AudioContextType>({
   activeEpisode: null,
   queue: [],
   syncStatus: "idle",
-  playEpisode: async () => {},
+  signInRequired: null,
+  dismissSignInRequired: () => {},
+  playEpisode: async () => false,
   pauseAudio: () => {},
   resetAudio: () => {},
   toggleCurrent: async () => {},
@@ -76,7 +80,6 @@ export function AudioProvider({
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const pendingResumeRef = useRef(0);
   const lastProgressWriteRef = useRef(0);
-  const lastListeningTimeRef = useRef(0);
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -84,6 +87,8 @@ export function AudioProvider({
   const [activeEpisode, setActiveEpisode] = useState<ActiveEpisode | null>(null);
   const [queue, setQueue] = useState<ActiveEpisode[]>([]);
   const [syncStatus, setSyncStatus] = useState<ListeningSyncStatus>("idle");
+  const [signInRequired, setSignInRequired] = useState<AudioContextType["signInRequired"]>(null);
+  const dismissSignInRequired = useCallback(() => setSignInRequired(null), []);
 
   useEffect(() => {
     if (authLoading) return;
@@ -177,13 +182,18 @@ export function AudioProvider({
 
   const playEpisode = useCallback(async (
     episode: ActiveEpisode,
-    nextQueue?: ActiveEpisode[]
+    nextQueue: ActiveEpisode[]
   ) => {
     const audio = ensureAudio();
 
-    if (nextQueue) {
-      setQueue(nextQueue);
+    if (needsEpisodeSignIn(nextQueue, episode, canSyncListening(user))) {
+      audio.pause();
+      setSignInRequired({ episode, queue: nextQueue, position: episodePosition(nextQueue, episode) });
+      void trackUsageEvent("aqsa_episode_sign_in_required", { episode_id: episode.episodeId, series_id: episode.seriesId });
+      return false;
     }
+
+    setQueue(nextQueue);
 
     const sameTrack =
       activeEpisode?.seriesId === episode.seriesId &&
@@ -191,7 +201,6 @@ export function AudioProvider({
 
     if (!sameTrack || audio.src !== episode.audioUrl) {
       pendingResumeRef.current = resumePosition(episode.episodeId);
-      if (pendingResumeRef.current > 0) markResumedEpisode();
       audio.src = episode.audioUrl;
       setCurrentTime(0);
       setDuration(0);
@@ -204,12 +213,24 @@ export function AudioProvider({
 
     try {
       await audio.play();
+      return true;
     } catch (err) {
       if (!(err instanceof Error && err.name === "AbortError")) {
         console.error("Gagal main audio global:", err);
       }
+      return false;
     }
-  }, [activeEpisode, ensureAudio, persistProgress]);
+  }, [activeEpisode, ensureAudio, persistProgress, user]);
+
+  useEffect(() => {
+    if (!canSyncListening(user) || !signInRequired) return;
+    const timer = window.setTimeout(() => {
+      const { episode, queue: pendingQueue } = signInRequired;
+      setSignInRequired(null);
+      void playEpisode(episode, pendingQueue);
+    }, 100);
+    return () => window.clearTimeout(timer);
+  }, [user, signInRequired, playEpisode]);
 
   const pauseAudio = () => {
     const audio = ensureAudio();
@@ -251,7 +272,6 @@ export function AudioProvider({
   const seekAudio = (time: number) => {
     const audio = ensureAudio();
     audio.currentTime = time;
-    lastListeningTimeRef.current = time;
     setCurrentTime(time);
     if (activeEpisode) persistProgress(activeEpisode, time, audio.duration);
   };
@@ -340,16 +360,9 @@ useEffect(() => {
   useEffect(() => {
     const audio = ensureAudio();
 
-    const handlePlay = () => {
-      lastListeningTimeRef.current = audio.currentTime || 0;
-      setIsPlaying(true);
-    };
+    const handlePlay = () => setIsPlaying(true);
 
     const handleTimeUpdate = () => {
-      if (!audio.paused) {
-        addListeningSeconds(recordListeningDelta(lastListeningTimeRef.current, audio.currentTime, audio.seeking));
-      }
-      lastListeningTimeRef.current = audio.currentTime || 0;
       setCurrentTime(audio.currentTime || 0);
       if (activeEpisode && Date.now() - lastProgressWriteRef.current >= 15000) {
         persistProgress(activeEpisode, audio.currentTime, audio.duration);
@@ -365,17 +378,13 @@ useEffect(() => {
     };
 
     const handleProgressPause = () => {
-      lastListeningTimeRef.current = audio.currentTime || 0;
       setIsPlaying(false);
       if (activeEpisode && audio.currentTime > 0) persistProgress(activeEpisode, audio.currentTime, audio.duration);
-      if (activeEpisode && audio.currentTime > 0) window.dispatchEvent(new Event(SIGN_IN_AUDIO_REST_EVENT));
     };
 
     const handleEnded = async () => {
-      lastListeningTimeRef.current = 0;
       setIsPlaying(false);
       setCurrentTime(0);
-      window.dispatchEvent(new Event(SIGN_IN_AUDIO_REST_EVENT));
       if (activeEpisode) {
         persistProgress(activeEpisode, 0, audio.duration, true);
         void trackUsageEvent("aqsa_episode_complete", { episode_id: activeEpisode.episodeId, series_id: activeEpisode.seriesId });
@@ -415,6 +424,8 @@ useEffect(() => {
         activeEpisode,
         queue,
         syncStatus: canSyncListening(user) ? syncStatus : "idle",
+        signInRequired,
+        dismissSignInRequired,
         playEpisode,
         pauseAudio,
         resetAudio,

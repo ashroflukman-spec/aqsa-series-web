@@ -9,7 +9,7 @@ import { LanguageProvider } from "../components/LanguageProvider";
 import { InstallProvider } from "../components/InstallProvider";
 import IpadLandscapeShell from "../components/IpadLandscapeShell";
 import UsageTracker from "../components/UsageTracker";
-import SignInInvite from "../components/SignInInvite";
+import EpisodeSignInGate from "../components/EpisodeSignInGate";
 import type { AppLanguage } from "../components/LanguageProvider";
 import { cookies } from "next/headers";
 
@@ -51,7 +51,7 @@ export default async function RootLayout({
               <AuthProvider>
                 <AudioProvider>
                   <UsageTracker />
-                  <SignInInvite />
+                  <EpisodeSignInGate />
                   <PWARegister />
                   {children}
                   <MiniPlayer />

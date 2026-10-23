@@ -11,6 +11,7 @@ import {
   Bookmark,
   SkipBack,
   SkipForward,
+  LockKeyhole,
   Trash2,
 } from "lucide-react";
 import { db } from "../../../../lib/firebase";
@@ -18,6 +19,15 @@ import { publishedContentQuery, publicSpeakersQuery } from "../../../../lib/publ
 import { useLanguage } from "../../../../components/LanguageProvider";
 import { localizeContent, type TranslatableContent } from "../../../../lib/localizedContent";
 import ContentFeedback from "../../../../components/ContentFeedback";
+import { useAuth } from "../../../../components/AuthProvider";
+import { canSyncListening } from "../../../../lib/listenerAccount";
+import { FREE_EPISODE_COUNT } from "../../../../lib/episodeAccess";
+
+const LOCKED_COPY = {
+  ms: "Log masuk dengan Google untuk mendengar episod ini.",
+  en: "Sign in with Google to listen to this episode.",
+  ar: "سجّل الدخول باستخدام Google للاستماع إلى هذه الحلقة.",
+} as const;
 
 const COPY = {
   ms: { missingEpisode: "Episod tidak dijumpai", missingSeries: "Siri tidak dijumpai", loadFailed: "Gagal memuatkan episod", offline: "Peranti anda tidak bersambung ke internet.", retry: "Cuba lagi", loading: "Memuatkan episod...", back: "Kembali ke Senarai Episod", playing: "Sedang Dimainkan", paused: "Dijeda", untitled: "Tanpa Tajuk", speaker: "Penyampai", unknownSpeaker: "Penyampai tidak diketahui", addMarker: "Tambah penanda", markerExists: "Penanda sudah ada sekitar", markerAdded: "Penanda ditambah pada", previous: "Sebelum", next: "Seterusnya", play: "Main", pause: "Jeda", noAudio: "Audio belum dimuat naik.", description: "Huraian Episod", noDescription: "Tiada huraian untuk episod ini.", reviewMarkers: "Penanda Ulang Kaji", markersHelp: "Simpan poin penting untuk ulang kaji kemudian", markersEmpty: "Belum ada penanda. Tekan butang penanda semasa audio sedang berjalan.", deleteMarker: "Padam penanda", marker: "Penanda", note: "Tulis nota atau poin penting di sini...", originalContent: "Huraian dalam bahasa asal", shareDescription: "Dengar episod ini di Aqsa Series." },
@@ -86,6 +96,7 @@ export default function PlayerPage() {
   const params = useParams();
   const router = useRouter();
   const { language } = useLanguage();
+  const { user, loading: authLoading } = useAuth();
   const copy = COPY[language];
 
   const {
@@ -161,7 +172,7 @@ export default function PlayerPage() {
       speakerName: getSpeakerName(targetEpisode.speakerId, targetEpisode.speakerName),
     };
 
-    await playEpisode(target, episodeQueue);
+    return playEpisode(target, episodeQueue);
   }, [episodeQueue, getSpeakerName, playEpisode, series, seriesId]);
 
   useEffect(() => {
@@ -356,6 +367,7 @@ export default function PlayerPage() {
   const currentEpisodeIndex = seriesEpisodes.findIndex(
     (ep) => ep.id === episodeId
   );
+  const guestLocked = !authLoading && !canSyncListening(user) && currentEpisodeIndex >= FREE_EPISODE_COUNT;
 
   const prevEpisode =
     currentEpisodeIndex > 0 ? seriesEpisodes[currentEpisodeIndex - 1] : null;
@@ -395,7 +407,7 @@ export default function PlayerPage() {
 
   const jumpToMarker = async (time: number) => {
     try {
-      if (!isCurrentEpisode && episode) await syncEpisodeToProvider(episode);
+      if (!isCurrentEpisode && episode && !(await syncEpisodeToProvider(episode))) return;
       seekAudio(time);
 
       if (isCurrentEpisode && !isPlaying) {
@@ -578,6 +590,7 @@ const shareUrl =
             </div>
           </div>
 
+          {guestLocked ? <div className="flex items-center gap-2 border-t border-[#D4AF37]/20 bg-[#D4AF37]/[0.07] px-5 py-3 text-xs font-medium text-[#E8D28A]"><LockKeyhole size={15} className="shrink-0" />{LOCKED_COPY[language]}</div> : null}
           <div className="border-t border-white/6 bg-[#2f3238]/95 p-4 backdrop-blur-xl">
             <div className="mb-5 flex items-start justify-between gap-4">
               <div className="min-w-0">

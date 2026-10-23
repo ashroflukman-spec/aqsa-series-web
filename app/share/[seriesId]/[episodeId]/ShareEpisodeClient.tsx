@@ -3,13 +3,22 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { doc, getDoc, getDocs } from "firebase/firestore";
-import { Play, Pause, SkipBack, SkipForward } from "lucide-react";
+import { LockKeyhole, Play, Pause, SkipBack, SkipForward } from "lucide-react";
 import { db } from "../../../../lib/firebase";
 import { publishedContentQuery, publicSpeakersQuery } from "../../../../lib/publicFirestore";
 import { useAudio } from "../../../../components/AudioProvider";
 import ShareEpisodeButton from "../../../../components/ShareEpisodeButton";
 import { useLanguage } from "../../../../components/LanguageProvider";
+import { useAuth } from "../../../../components/AuthProvider";
+import { canSyncListening } from "../../../../lib/listenerAccount";
+import { FREE_EPISODE_COUNT } from "../../../../lib/episodeAccess";
 import { localizeContent, type TranslatableContent } from "../../../../lib/localizedContent";
+
+const LOCKED_COPY = {
+  ms: "Log masuk dengan Google untuk mendengar episod ini.",
+  en: "Sign in with Google to listen to this episode.",
+  ar: "سجّل الدخول باستخدام Google للاستماع إلى هذه الحلقة.",
+} as const;
 
 const COPY = {
   ms: { missingEpisode: "Episod tidak dijumpai", missingSeries: "Siri tidak dijumpai", failed: "Gagal memuatkan episod", loading: "Memuatkan episod...", open: "Buka dalam pemain", shared: "Dikongsi dari Aqsa Series", speaker: "Penyampai", unknownSpeaker: "Penyampai tidak diketahui", previous: "Sebelum", next: "Seterusnya", play: "Main", pause: "Jeda", noAudio: "Audio belum dimuat naik.", share: "Perkongsian Episod", listen: "Dengar sekarang di Aqsa Series", fallback: "Dengar episod ini di Aqsa Series.", originalContent: "Huraian dalam bahasa asal" },
@@ -72,6 +81,7 @@ export default function ShareEpisodePage() {
   const params = useParams();
   const router = useRouter();
   const { language } = useLanguage();
+  const { user, loading: authLoading } = useAuth();
   const copy = COPY[language];
 
   const {
@@ -280,12 +290,13 @@ export default function ShareEpisodePage() {
       ),
     };
 
-    await playEpisode(target, queue);
+    return playEpisode(target, queue);
   }, [buildQueue, series, seriesId, getSpeakerName, playEpisode]);
 
   const currentEpisodeIndex = seriesEpisodes.findIndex(
     (ep) => ep.id === episodeId
   );
+  const guestLocked = !authLoading && !canSyncListening(user) && currentEpisodeIndex >= FREE_EPISODE_COUNT;
 
   const prevEpisode =
     currentEpisodeIndex > 0 ? seriesEpisodes[currentEpisodeIndex - 1] : null;
@@ -406,6 +417,7 @@ export default function ShareEpisodePage() {
             </div>
           </div>
 
+          {guestLocked ? <div className="flex items-center gap-2 border-t border-[#D4AF37]/20 bg-[#D4AF37]/[0.07] px-5 py-3 text-xs font-medium text-[#E8D28A]"><LockKeyhole size={15} className="shrink-0" />{LOCKED_COPY[language]}</div> : null}
           <div className="border-t border-white/6 bg-[#2f3238]/95 p-4 backdrop-blur-xl">
             <div className="mb-5">
               <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/45">

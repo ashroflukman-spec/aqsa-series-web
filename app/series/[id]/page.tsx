@@ -6,6 +6,10 @@ import { doc, getDoc, getDocs } from "firebase/firestore";
 import { db } from "../../../lib/firebase";
 import { publishedContentQuery, publicSpeakersQuery } from "../../../lib/publicFirestore";
 import { useAudio } from "../../../components/AudioProvider";
+import { useAuth } from "../../../components/AuthProvider";
+import { canSyncListening } from "../../../lib/listenerAccount";
+import { FREE_EPISODE_COUNT } from "../../../lib/episodeAccess";
+import { LockKeyhole } from "lucide-react";
 import { useLanguage } from "../../../components/LanguageProvider";
 import { localizeContent, type TranslatableContent } from "../../../lib/localizedContent";
 
@@ -69,6 +73,7 @@ export default function SeriesPage() {
   const params = useParams();
   const router = useRouter();
   const { playEpisode } = useAudio();
+  const { user, loading: authLoading } = useAuth();
   const { language } = useLanguage();
   const copy = COPY[language];
 
@@ -402,24 +407,25 @@ async function handleOpenEpisode(ep: EpisodeItem) {
                 </div>
               )}
 
-              {episodes.map((ep) => (
-                <div
+              {episodes.map((ep, index) => (
+                <button
                   key={ep.id}
+                  type="button"
                   onClick={() => handleOpenEpisode(ep)}
-                  className="group relative cursor-pointer rounded-2xl border border-white/10 bg-[#1f232b] p-4 shadow-[0_10px_28px_rgba(0,0,0,0.18)] transition duration-300 hover:-translate-y-[2px] hover:border-white/15 hover:bg-[#262b35] hover:shadow-[0_16px_40px_rgba(0,0,0,0.26),0_0_0_1px_rgba(212,175,55,0.06),0_0_28px_rgba(212,175,55,0.08)] active:scale-[0.985] active:-translate-y-[1px] active:border-white/15 active:bg-[#262b35] active:shadow-[0_16px_36px_rgba(0,0,0,0.24),0_0_0_1px_rgba(212,175,55,0.05),0_0_22px_rgba(212,175,55,0.08)]"
+                  className="group relative w-full cursor-pointer rounded-2xl border border-white/10 bg-[#1f232b] p-4 text-start shadow-[0_10px_28px_rgba(0,0,0,0.18)] transition duration-300 hover:-translate-y-[2px] hover:border-white/15 hover:bg-[#262b35] hover:shadow-[0_16px_40px_rgba(0,0,0,0.26),0_0_0_1px_rgba(212,175,55,0.06),0_0_28px_rgba(212,175,55,0.08)] active:scale-[0.985] active:-translate-y-[1px] active:border-white/15 active:bg-[#262b35] active:shadow-[0_16px_36px_rgba(0,0,0,0.24),0_0_0_1px_rgba(212,175,55,0.05),0_0_22px_rgba(212,175,55,0.08)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E8D28A]"
                 >
                   <div className="absolute end-4 top-1/2 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border border-white/12 bg-white/[0.025] shadow-[0_8px_22px_rgba(0,0,0,0.16)] backdrop-blur-2xl transition duration-300 group-hover:scale-[1.06] group-hover:border-white/18 group-hover:bg-white/[0.05] group-active:scale-[1.04] group-active:border-white/20 group-active:bg-white/[0.06]">
   <div className="absolute inset-[1px] rounded-full bg-gradient-to-br from-white/[0.14] via-white/[0.04] to-transparent" />
   <div className="absolute inset-[1px] rounded-full shadow-[inset_0_1px_0_rgba(255,255,255,0.18),inset_0_-10px_18px_rgba(255,255,255,0.015)]" />
   <div className="absolute left-[9px] top-[7px] h-3.5 w-5 rounded-full bg-white/[0.10] blur-[2px]" />
-  <svg
+  {!authLoading && !canSyncListening(user) && index >= FREE_EPISODE_COUNT ? <LockKeyhole size={16} className="relative z-10 text-[#E8D28A]" /> : <svg
     xmlns="http://www.w3.org/2000/svg"
     viewBox="0 0 24 24"
     fill="rgba(255,255,255,0.88)"
     className="relative z-10 ml-[1px] h-[14px] w-[14px] drop-shadow-[0_0_4px_rgba(255,255,255,0.14)]"
   >
     <path d="M8 5v14l11-7z" />
-  </svg>
+  </svg>}
 </div>
 
                   <div className="flex items-start justify-between gap-4 pe-12">
@@ -428,11 +434,12 @@ async function handleOpenEpisode(ep: EpisodeItem) {
   {localizeContent("episode", ep, language).title}
 </p>
                       <p className="mt-1 text-xs text-gray-400">
-  {formatDuration(ep.durationSeconds || 0)}
+  {language === "ms" ? "Episod" : language === "en" ? "Episode" : "الحلقة"} {index + 1} · {formatDuration(ep.durationSeconds || 0)}
 </p>
+                      {!authLoading && !canSyncListening(user) && index >= FREE_EPISODE_COUNT ? <p className="mt-1 text-xs font-medium text-[#E8D28A]">{language === "ms" ? "Log masuk untuk dengar" : language === "en" ? "Sign in to listen" : "سجّل الدخول للاستماع"}</p> : null}
                     </div>
                   </div>
-                </div>
+                </button>
               ))}
             </div>
           </>
