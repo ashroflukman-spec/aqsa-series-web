@@ -13,6 +13,7 @@ import { useLanguage } from "../components/LanguageProvider";
 import { localizeContent, type TranslatableContent } from "../lib/localizedContent";
 import { videoCategoryLabel } from "../lib/videoCategory";
 import InstallAppCard from "../components/InstallAppCard";
+import NotificationCenter from "../components/NotificationCenter";
 import ContentFeedback from "../components/ContentFeedback";
 import { isAdminEmail } from "../lib/admin";
 import { LISTENING_CHANGED_EVENT, readListeningProgress } from "../lib/listeningProgress";
@@ -474,6 +475,8 @@ export default function Page() {
               <p className="mt-3 text-sm text-gray-400">
                 {copy.tagline}
               </p>
+
+              <NotificationCenter surface="home" />
 
               {isAdminEmail(user?.email) && (
                 <button

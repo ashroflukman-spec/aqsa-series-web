@@ -7,6 +7,7 @@ import BottomNav from "../components/BottomNav";
 import PWARegister from "../components/PWARegister";
 import { LanguageProvider } from "../components/LanguageProvider";
 import { InstallProvider } from "../components/InstallProvider";
+import InstallAppCard from "../components/InstallAppCard";
 import IpadLandscapeShell from "../components/IpadLandscapeShell";
 import UsageTracker from "../components/UsageTracker";
 import EpisodeSignInOffer from "../components/EpisodeSignInOffer";
@@ -53,6 +54,7 @@ export default async function RootLayout({
                   <UsageTracker />
                   <EpisodeSignInOffer />
                   <PWARegister />
+                  <InstallAppCard surface="welcome" />
                   {children}
                   <MiniPlayer />
                   <BottomNav />

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useLanguage, type AppLanguage } from "../../components/LanguageProvider";
 import InstallAppCard from "../../components/InstallAppCard";
+import NotificationCenter from "../../components/NotificationCenter";
 import AccountPanel from "../../components/AccountPanel";
 import { hasAnalyticsConsent, setAnalyticsConsent, trackUsageEvent } from "../../lib/usageAnalytics";
 
@@ -250,6 +251,7 @@ export default function SettingsPage() {
           </div>
 
           <InstallAppCard surface="settings" />
+          <NotificationCenter surface="settings" />
 
           <div className="rounded-2xl bg-[#14161b] p-5 border border-white/5">
             <p className="text-sm font-semibold mb-2">

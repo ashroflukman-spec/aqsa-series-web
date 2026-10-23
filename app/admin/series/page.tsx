@@ -10,9 +10,11 @@ import {
   query,
   serverTimestamp,
   setDoc,
+  where,
 } from "firebase/firestore";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { db, storage } from "../../../lib/firebase";
+import { announcePublished } from "../../../lib/announcePublished";
 
 type SpeakerItem = {
   id: string;
@@ -396,8 +398,15 @@ export default function AdminSeriesPage() {
         { merge: true }
       );
 
+      let announced = true;
+      const previous = seriesList.find((item) => item.id === finalSlug);
+      if (isPublished && previous?.isPublished === false) {
+        const snapshot = await getDocs(query(collection(db, "episodes"), where("seriesId", "==", finalSlug)));
+        const ids = snapshot.docs.filter((item) => item.data().isPublished === true && item.data().isDeleted !== true).map((item) => item.id);
+        announced = await announcePublished("episode", ids);
+      }
       setMessage(
-        editingSeriesId
+        !announced ? "Siri disimpan, tetapi notifikasi episod belum dihantar." : editingSeriesId
           ? "Series berjaya dikemaskini."
           : "Series berjaya disimpan."
       );

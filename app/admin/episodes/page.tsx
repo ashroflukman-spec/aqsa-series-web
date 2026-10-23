@@ -15,6 +15,7 @@ import {
 } from "firebase/firestore";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { db, storage } from "../../../lib/firebase";
+import { announcePublished } from "../../../lib/announcePublished";
 
 type SeriesItem = {
   id: string;
@@ -278,6 +279,7 @@ const [generatingShareCopy, setGeneratingShareCopy] = useState(false);
 
       const seriesData = seriesSnap.data();
       const speakerId = seriesData.speakerId ?? "";
+      const addedIds: string[] = [];
 
       for (let i = 0; i < titles.length; i++) {
         const title = titles[i];
@@ -299,7 +301,7 @@ const [generatingShareCopy, setGeneratingShareCopy] = useState(false);
           durationSeconds = await readAudioDuration(file);
         }
 
-        await addDoc(collection(db, "episodes"), {
+        const added = await addDoc(collection(db, "episodes"), {
   title,
   slug: slugify(title),
   description: "",
@@ -323,9 +325,14 @@ const [generatingShareCopy, setGeneratingShareCopy] = useState(false);
   createdAt: serverTimestamp(),
   updatedAt: serverTimestamp(),
 });
+        addedIds.push(added.id);
       }
 
-      setMessage("Bulk upload berjaya. Episod dan audio telah disimpan.");
+      const announced = seriesData.isPublished === true && seriesData.isDeleted !== true
+        ? await announcePublished("episode", addedIds) : true;
+      setMessage(announced
+        ? "Bulk upload berjaya. Episod dan audio telah disimpan."
+        : "Episod disimpan, tetapi notifikasi belum dihantar. Semak konfigurasi notifikasi.");
       resetBulkForm();
       await loadAll();
     } catch (err: unknown) {
@@ -495,7 +502,10 @@ const [generatingShareCopy, setGeneratingShareCopy] = useState(false);
   updatedAt: serverTimestamp(),
 });
 
-      setMessage("Episode berjaya dikemaskini.");
+      const previous = episodes.find((episode) => episode.id === editingEpisodeId);
+      const announced = editIsPublished && !previous?.isPublished && seriesData.isPublished === true && seriesData.isDeleted !== true
+        ? await announcePublished("episode", [editingEpisodeId]) : true;
+      setMessage(announced ? "Episode berjaya dikemaskini." : "Episod disimpan, tetapi notifikasi belum dihantar.");
       resetEditForm();
       await loadAll();
     } catch (err: unknown) {

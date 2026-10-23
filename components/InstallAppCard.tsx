@@ -4,12 +4,12 @@ import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Download, Share2, X } from "lucide-react";
+import { usePathname } from "next/navigation";
 import { useInstall } from "./InstallProvider";
 import { useLanguage } from "./LanguageProvider";
 import { getAppOverlayRoot } from "./appOverlayRoot";
 
-const DISMISS_KEY = "aqsa-install-nudge-until";
-const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
+const INSTALLED_KEY = "aqsa-install-confirmed";
 const SITE_URL = "https://www.aqsaseries.com";
 type IosGuideBrowser = "safari" | "chrome" | "other";
 
@@ -35,6 +35,7 @@ const COPY = {
     desktopSteps: ["Buka menu pelayar atau ikon **Install** di bar alamat.", "Pilih **Install Aqsa Series** dan sahkan."],
     copied: "Pautan disalin",
     copy: "Salin pautan",
+    done: "Saya sudah pasang",
   },
   en: {
     title: "Add Aqsa Series to your Home Screen",
@@ -57,6 +58,7 @@ const COPY = {
     desktopSteps: ["Open the browser menu or the **Install** icon in the address bar.", "Choose **Install Aqsa Series** and confirm."],
     copied: "Link copied",
     copy: "Copy link",
+    done: "I've installed it",
   },
   ar: {
     title: "أضف Aqsa Series إلى الشاشة الرئيسية",
@@ -79,6 +81,7 @@ const COPY = {
     desktopSteps: ["افتح قائمة المتصفح أو رمز **Install** في شريط العنوان.", "اختر **Install Aqsa Series** ثم أكد."],
     copied: "تم نسخ الرابط",
     copy: "نسخ الرابط",
+    done: "لقد ثبّت التطبيق",
   },
 } as const;
 
@@ -90,23 +93,33 @@ function renderGuideText(value: string) {
   );
 }
 
-export default function InstallAppCard({ surface }: { surface: "home" | "settings" }) {
+export default function InstallAppCard({ surface }: { surface: "home" | "settings" | "welcome" }) {
+  const pathname = usePathname();
   const { language } = useLanguage();
   const { platform, installed, canPrompt, promptInstall } = useInstall();
   const copy = COPY[language];
   const [guideOpen, setGuideOpen] = useState(false);
   const [dismissed, setDismissed] = useState(false);
+  const [confirmedInstalled, setConfirmedInstalled] = useState(false);
   const [copied, setCopied] = useState(false);
   const [iosGuideBrowser, setIosGuideBrowser] = useState<IosGuideBrowser | null>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const welcomeShown = useRef(false);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      setDismissed(Number(localStorage.getItem(DISMISS_KEY) || 0) > Date.now());
+      setConfirmedInstalled(localStorage.getItem(INSTALLED_KEY) === "true");
     }, 0);
     return () => window.clearTimeout(timer);
   }, []);
+
+  useEffect(() => {
+    if (surface !== "welcome" || platform === "unknown" || installed || confirmedInstalled || pathname.startsWith("/admin") || welcomeShown.current) return;
+    if (!(["android", "ios-safari", "ios-chrome", "ios-other"] as string[]).includes(platform)) return;
+    const timer = window.setTimeout(() => { welcomeShown.current = true; setGuideOpen(true); }, 550);
+    return () => window.clearTimeout(timer);
+  }, [surface, platform, installed, confirmedInstalled, pathname]);
 
   useEffect(() => {
     if (!guideOpen) return;
@@ -126,7 +139,8 @@ export default function InstallAppCard({ surface }: { surface: "home" | "setting
   }, [guideOpen]);
 
   if (platform === "unknown") return null;
-  if (surface === "home" && (installed || dismissed || platform === "other")) return null;
+  if (surface === "home" && (installed || confirmedInstalled || dismissed || platform === "other")) return null;
+  if (surface === "welcome" && (installed || confirmedInstalled || platform === "other" || pathname.startsWith("/admin"))) return null;
 
   const isIos = platform === "ios-safari" || platform === "ios-chrome" || platform === "ios-other";
   const selectedBrowser = iosGuideBrowser ?? (platform === "ios-chrome" ? "chrome" : platform === "ios-safari" ? "safari" : "other");
@@ -145,8 +159,13 @@ export default function InstallAppCard({ surface }: { surface: "home" | "setting
   }
 
   function dismiss() {
-    localStorage.setItem(DISMISS_KEY, String(Date.now() + SEVEN_DAYS));
     setDismissed(true);
+  }
+
+  function confirmInstalled() {
+    localStorage.setItem(INSTALLED_KEY, "true");
+    setConfirmedInstalled(true);
+    setGuideOpen(false);
   }
 
   async function copyLink() {
@@ -160,7 +179,7 @@ export default function InstallAppCard({ surface }: { surface: "home" | "setting
 
   return (
     <>
-      <section className={`relative rounded-2xl border border-[#D4AF37]/25 bg-gradient-to-br from-[#24202a] to-[#181b22] p-4 shadow-[0_14px_35px_rgba(0,0,0,0.2)] ${surface === "home" ? "mb-9" : ""}`} aria-label={copy.title}>
+      {surface !== "welcome" && <section className={`relative rounded-2xl border border-[#D4AF37]/25 bg-gradient-to-br from-[#24202a] to-[#181b22] p-4 shadow-[0_14px_35px_rgba(0,0,0,0.2)] ${surface === "home" ? "mb-9" : ""}`} aria-label={copy.title}>
         {surface === "home" && (
           <button type="button" onClick={dismiss} aria-label={copy.dismiss} className="absolute end-3 top-3 rounded-full p-1.5 text-white/45 hover:bg-white/10 hover:text-white">
             <X size={16} />
@@ -179,7 +198,7 @@ export default function InstallAppCard({ surface }: { surface: "home" | "setting
             {canPrompt ? copy.install : copy.guide}
           </button>
         )}
-      </section>
+      </section>}
 
       {guideOpen && createPortal(
         <div role="presentation" onClick={() => setGuideOpen(false)} className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/75 px-3 py-[calc(1rem+env(safe-area-inset-top))] backdrop-blur-sm">
@@ -226,6 +245,7 @@ export default function InstallAppCard({ surface }: { surface: "home" | "setting
               </div>
             )}
             <button type="button" onClick={() => setGuideOpen(false)} className="mt-6 min-h-11 w-full rounded-xl bg-white/10 px-4 py-2.5 text-sm font-semibold text-white">{copy.close}</button>
+            <button type="button" onClick={confirmInstalled} className="mt-2 min-h-11 w-full rounded-xl border border-white/10 px-4 py-2.5 text-xs font-medium text-white/55">{copy.done}</button>
           </div>
         </div>,
         getAppOverlayRoot()

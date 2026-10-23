@@ -13,6 +13,7 @@ import {
   updateDoc,
 } from "firebase/firestore";
 import { db } from "../../../lib/firebase";
+import { announcePublished } from "../../../lib/announcePublished";
 import AdminGuard from "../../../components/AdminGuard";
 import { useAuth } from "../../../components/AuthProvider";
 import { effectiveLinkStatus, type MonitoredVideo } from "../../../lib/videoLinkHealth";
@@ -278,9 +279,10 @@ async function handleSave() {
         linkCheckedAt: null,
         linkCheckedYoutubeId: "",
       } : payload);
-      setMessage("Video berjaya dikemaskini.");
+      const announced = isPublished && !original?.isPublished ? await announcePublished("video", [editingId]) : true;
+      setMessage(announced ? "Video berjaya dikemaskini." : "Video disimpan, tetapi notifikasi belum dihantar.");
     } else {
-      await addDoc(collection(db, "videos"), {
+      const added = await addDoc(collection(db, "videos"), {
         ...payload,
         createdAt: serverTimestamp(),
         linkStatus: "unchecked",
@@ -288,7 +290,8 @@ async function handleSave() {
         linkCheckedAt: null,
         linkCheckedYoutubeId: "",
       });
-      setMessage("Video baru berjaya ditambah.");
+      const announced = isPublished ? await announcePublished("video", [added.id]) : true;
+      setMessage(announced ? "Video baru berjaya ditambah." : "Video disimpan, tetapi notifikasi belum dihantar.");
     }
 
     resetForm();
@@ -346,11 +349,10 @@ async function handleSave() {
         updatedAt: serverTimestamp(),
       });
 
-      setMessage(
-        !video.isPublished
-          ? "Video berjaya dipublish."
-          : "Video berjaya dijadikan draft."
-      );
+      const announced = !video.isPublished ? await announcePublished("video", [video.id]) : true;
+      setMessage(!video.isPublished
+        ? announced ? "Video berjaya dipublish." : "Video dipublish, tetapi notifikasi belum dihantar."
+        : "Video berjaya dijadikan draft.");
 
       await loadVideos();
     } catch (err) {
