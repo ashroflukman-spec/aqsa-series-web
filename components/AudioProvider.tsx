@@ -19,6 +19,7 @@ import {
 } from "../lib/listeningProgress";
 import { connectListeningSync, pushListeningProgress, type ListeningSyncStatus } from "../lib/listeningSync";
 import { trackUsageEvent } from "../lib/usageAnalytics";
+import { recordEpisodePlay } from "../lib/episodePlayCount";
 import { canSyncListening } from "../lib/listenerAccount";
 import {
   advanceEpisodeOffer,
@@ -223,6 +224,7 @@ export function AudioProvider({
     const sameTrack =
       activeEpisode?.seriesId === episode.seriesId &&
       activeEpisode?.episodeId === episode.episodeId;
+    const startedNewPlayback = !sameTrack || audio.paused;
 
     if (!sameTrack || audio.src !== episode.audioUrl) {
       pendingResumeRef.current = resumePosition(episode.episodeId);
@@ -238,6 +240,7 @@ export function AudioProvider({
 
     try {
       await audio.play();
+      if (startedNewPlayback) void recordEpisodePlay(episode.episodeId);
       if (!authLoading && !canSyncListening(user) && !signInOffer) {
         const next = advanceEpisodeOffer(readOfferProgress(), episode, false);
         saveOfferProgress(next.progress);
@@ -282,6 +285,7 @@ export function AudioProvider({
     try {
       if (audio.paused) {
         await audio.play();
+        void recordEpisodePlay(activeEpisode.episodeId);
       } else {
         audio.pause();
       }
@@ -350,6 +354,7 @@ useEffect(() => {
     const audio = ensureAudio();
     try {
       await audio.play();
+      if (activeEpisode) void recordEpisodePlay(activeEpisode.episodeId);
     } catch {}
   });
 
@@ -378,7 +383,7 @@ useEffect(() => {
       navigator.mediaSession.setActionHandler("nexttrack", null);
     } catch {}
   };
-}, [ensureAudio, playPrev, playNext]);
+}, [activeEpisode, ensureAudio, playPrev, playNext]);
 
   useEffect(() => {
     const audio = ensureAudio();

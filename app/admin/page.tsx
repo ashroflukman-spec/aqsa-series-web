@@ -20,6 +20,7 @@ import { auth, db } from "../../lib/firebase";
 import AdminGuard from "../../components/AdminGuard";
 import VideoLinkMonitor from "../../components/admin/VideoLinkMonitor";
 import UserInsights from "../../components/admin/UserInsights";
+import EpisodePlayInsights from "../../components/admin/EpisodePlayInsights";
 
 type Stats = {
   speakers: number;
@@ -301,6 +302,7 @@ export default function AdminPage() {
           </div>
 
           <UserInsights />
+          <EpisodePlayInsights />
 
           <div className="space-y-4">
             {cards.map((card) => {
