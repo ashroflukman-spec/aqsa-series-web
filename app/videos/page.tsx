@@ -7,7 +7,7 @@ import { Share2 } from "lucide-react";
 import { publishedContentQuery } from "../../lib/publicFirestore";
 import PremiumShareModal from "../../components/PremiumShareModal";
 import { useLanguage } from "../../components/LanguageProvider";
-import { videoCategoryLabel } from "../../lib/videoCategory";
+import { VIDEO_CATEGORIES, videoCategoryLabel } from "../../lib/videoCategory";
 import ContentFeedback from "../../components/ContentFeedback";
 
 const COPY = {
@@ -31,17 +31,6 @@ type VideoItem = {
   isPublished: boolean;
   isDeleted?: boolean;
 };
-
-const VIDEO_CATEGORIES = [
-  "Tadabbur",
-  "Wacana",
-  "Dokumentari",
-  "Aqsa for Kids",
-  "Aqsa Ads",
-  "Umum",
-  "Muzik",
-  "Filem",
-];
 
 function extractYouTubeId(url: string) {
   if (!url) return "";

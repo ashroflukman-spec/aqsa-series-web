@@ -17,6 +17,7 @@ import { announcePublished } from "../../../lib/announcePublished";
 import AdminGuard from "../../../components/AdminGuard";
 import { useAuth } from "../../../components/AuthProvider";
 import { effectiveLinkStatus, type MonitoredVideo } from "../../../lib/videoLinkHealth";
+import { VIDEO_CATEGORIES } from "../../../lib/videoCategory";
 import type { Timestamp } from "firebase/firestore";
 
 type VideoItem = MonitoredVideo & {
@@ -31,17 +32,6 @@ type VideoItem = MonitoredVideo & {
   isPublished: boolean;
   isDeleted?: boolean;
 };
-
-const VIDEO_CATEGORIES = [
-  "Tadabbur",
-  "Wacana",
-  "Dokumentari",
-  "Aqsa for Kids",
-  "Aqsa Ads",
-  "Umum",
-  "Muzik",
-  "Filem",
-];
 
 function extractYouTubeId(url: string) {
   if (!url) return "";
