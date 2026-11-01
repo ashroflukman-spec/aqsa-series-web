@@ -1,16 +1,7 @@
 import "./globals.css";
 import type { Metadata, Viewport } from "next";
-import { AudioProvider } from "../components/AudioProvider";
-import { AuthProvider } from "../components/AuthProvider";
-import MiniPlayer from "../components/MiniPlayer";
-import BottomNav from "../components/BottomNav";
-import PWARegister from "../components/PWARegister";
 import { LanguageProvider } from "../components/LanguageProvider";
-import { InstallProvider } from "../components/InstallProvider";
-import InstallAppCard from "../components/InstallAppCard";
-import IpadLandscapeShell from "../components/IpadLandscapeShell";
-import UsageTracker from "../components/UsageTracker";
-import EpisodeSignInOffer from "../components/EpisodeSignInOffer";
+import AppRouteShell from "../components/AppRouteShell";
 import type { AppLanguage } from "../components/LanguageProvider";
 import { cookies } from "next/headers";
 
@@ -47,21 +38,7 @@ export default async function RootLayout({
     <html lang={language || "ms"} dir={language === "ar" ? "rtl" : "ltr"}>
       <body className="bg-gradient-to-b from-[#0f1115] to-[#1a1d24]">
         <LanguageProvider initialLanguage={language}>
-          <IpadLandscapeShell>
-            <InstallProvider>
-              <AuthProvider>
-                <AudioProvider>
-                  <UsageTracker />
-                  <EpisodeSignInOffer />
-                  <PWARegister />
-                  <InstallAppCard surface="welcome" />
-                  {children}
-                  <MiniPlayer />
-                  <BottomNav />
-                </AudioProvider>
-              </AuthProvider>
-            </InstallProvider>
-          </IpadLandscapeShell>
+          <AppRouteShell>{children}</AppRouteShell>
         </LanguageProvider>
       </body>
     </html>
